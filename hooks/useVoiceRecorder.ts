@@ -26,6 +26,12 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
 
   const startRecording = async () => {
     try {
+      // Request microphone permission with proper error handling
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Safari.');
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       const mediaRecorder = new MediaRecorder(stream, {
@@ -60,9 +66,19 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
         });
       }, 1000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start recording:', error);
-      alert('Microphone access denied. Please enable microphone permissions.');
+      
+      // Provide user-friendly error messages
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Microphone access denied. Please allow microphone permissions in your browser settings to record voice messages.');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        alert('No microphone found. Please connect a microphone and try again.');
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        alert('Microphone is being used by another application. Please close other apps using the microphone and try again.');
+      } else {
+        alert('Failed to access microphone. Please check your browser permissions and try again.');
+      }
     }
   };
 
