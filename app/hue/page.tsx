@@ -10,7 +10,7 @@ import Username from '@/components/Username';
 import TimeAgo from '@/components/TimeAgo';
 import { WallMessage } from '@/types/database';
 import { Gig } from '@/types/gig';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { Heart, MessageCircle, Loader2 } from 'lucide-react';
 
 export default function HuePage() {

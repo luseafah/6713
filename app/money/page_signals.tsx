@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { FixedHeader } from '@/components/FixedHeader';
 import { TrendingUp, TrendingDown, Upload, Bell, BellOff, Coins, Megaphone } from 'lucide-react';
 import AnnouncementCard from '@/components/AnnouncementCard';

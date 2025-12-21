@@ -6,7 +6,7 @@ import GlazeSettings from '@/components/GlazeSettings';
 import AppWrapper from '@/components/AppWrapper';
 import GigsModal from '@/components/GigsModal';
 import { Briefcase } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 
 export default function SettingsPage() {
   const [showGigsModal, setShowGigsModal] = useState(false);

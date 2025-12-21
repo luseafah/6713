@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Megaphone, Shield, TrendingUp } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import AnnouncementCard from '@/components/AnnouncementCard';
 import AppWrapper from '@/components/AppWrapper';
 import DeactivationCheck from '@/components/DeactivationCheck';

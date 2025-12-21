@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { 
   DollarSign, TrendingUp, Users, Shield, AlertTriangle, 
   Eye, Ban, CheckCircle, XCircle, Crown, Activity 

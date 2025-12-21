@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import AppWrapper from '@/components/AppWrapper';
 import StoryCircle from '@/components/StoryCircle';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import { WallMessage } from '@/types/database';
 import { Gig } from '@/types/gig';
 
