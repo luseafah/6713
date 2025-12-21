@@ -1,0 +1,285 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================
+   6713 PROTOCOL: MOBILE-FIRST POLISH
+   ===================================================== */
+
+/* Dynamic Viewport Height (accounts for mobile browser bars) */
+:root {
+  --app-height: 100dvh;
+}
+
+html, body {
+  height: 100dvh;
+  height: var(--app-height);
+  overflow: hidden;
+}
+
+body {
+  color: #ffffff;
+  background: #000000;
+  /* Enable momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* App Container (4-Tab System) */
+.app-container {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tab Content (Only content scrolls, not navigation) */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+  overscroll-behavior: contain; /* Prevent scroll chaining */
+}
+
+/* Seamless Scrolling Performance */
+.seamless-scroll {
+  will-change: scroll-position;
+  scroll-behavior: smooth;
+}
+
+/* Virtual Scrolling Container */
+
+/* =====================================================
+   SKELETON SHIMMER ANIMATION
+   ===================================================== */
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.virtual-scroll {
+  contain: layout style paint;
+  content-visibility: auto;
+}
+
+/* =====================================================
+   6713 PROTOCOL: EXISTING ANIMATIONS
+   ===================================================== */
+
+/* Glaze Protocol Animation */
+@keyframes glaze-shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+.glaze-animate {
+  animation: glaze-shimmer 3s ease-in-out infinite;
+}
+
+/* Crown icon pulse for admin */
+@keyframes crown-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.crown-pulse {
+  animation: crown-pulse 2s ease-in-out infinite;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* =====================================================
+   6713 PROTOCOL: SENSORY ANIMATIONS
+   ===================================================== */
+
+/* 13-Heart Burst Animation */
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translate(var(--x), var(--y)) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(calc(var(--x) * 0.7), calc(var(--y) * 0.5)) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) scale(0.5);
+  }
+}
+
+.animate-float-up {
+  animation: float-up 1.5s ease-out forwards;
+}
+
+/* Poll Growing Frequency Animation */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Haptic Visual Feedback (Pulse Ring) */
+@keyframes haptic-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+.animate-haptic {
+  animation: haptic-pulse 0.6s ease-out;
+}
+
+/* =====================================================
+   6713 PROTOCOL: EXISTING PROTOCOL ANIMATIONS
+   ===================================================== */
+
+/* Pope AI transient message fade-in animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Budge Border Animations - Gig Protocol */
+/* Yellow border for active Budge (Gig push) */
+.budge-border {
+  outline: 3px solid #FFD700 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+}
+
+/* Flicker between yellow and red for Budge + Active Story/Live */
+/* Precise timing: 5.5s yellow, 0.5s red = 6s total cycle */
+.flicker-border {
+  outline: 3px solid #FFD700;
+  outline-offset: 2px;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+  animation: gigFlicker 6s infinite;
+}
+
+@keyframes gigFlicker {
+  0%, 91.66% { 
+    outline-color: #FFD700; /* Yellow for 5.5s */
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+  }
+  91.67%, 100% { 
+    outline-color: #FF0000; /* Red Flicker for 0.5s */
+    box-shadow: 0 0 16px rgba(255, 0, 0, 0.7);
+  }
+}
+
+/* Pulsing red for Live-only streams */
+.live-border {
+  outline: 3px solid #ef4444;
+  outline-offset: 2px;
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    outline-color: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    outline-color: #dc2626;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+  }
+}
+
+/* Yellow "+" indicator for users with active Gigs */
+.gig-active-indicator {
+  color: #FFD700;
+  font-weight: 700;
+  margin-left: 3px;
+  font-size: 0.85em;
+}
+
+/* Coin Burst Animations for Talent Throwing */
+@keyframes coin-burst {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-60px);
+  }
+}
+
+@keyframes bounce-scale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.animate-coin-burst {
+  animation: coin-burst 1.5s ease-out forwards;
+}
+
+.animate-bounce-scale {
+  animation: bounce-scale 0.6s ease-in-out;
+}
