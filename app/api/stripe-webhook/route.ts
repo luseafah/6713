@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16',
-});
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
-
+// Stripe payment processing disabled - not needed for admin testing
 export async function POST(req: NextRequest) {
+  return NextResponse.json({ error: 'Stripe integration disabled' }, { status: 501 });
   const body = await req.text();
   const sig = req.headers.get('stripe-signature') || '';
 
