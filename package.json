@@ -19,8 +19,7 @@
     "lucide-react": "^0.323.0",
     "wavesurfer.js": "^7.7.3",
     "framer-motion": "^10.18.0",
-    "lodash": "^4.17.21",
-    "stripe": "^14.11.0"
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
