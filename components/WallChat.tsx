@@ -32,8 +32,8 @@ export default function WallChat() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdsInBuffer = useRef<Set<string>>(new Set());
-  const purgedMediaUrls = useRef<string[]>(
-  const { throwTalents, throwing: isThrowing } = useThrowTalent();[]);
+  const purgedMediaUrls = useRef<string[]>([]);
+  const { throwTalents, throwing: isThrowing } = useThrowTalent();
   
   const voiceRecorder = useVoiceRecorder();
 
