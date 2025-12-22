@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useVerificationStatus } from '@/hooks/useVerificationStatus';
+import UnverifiedGate from '@/components/UnverifiedGate';
 import DeactivationCheck from '@/components/DeactivationCheck';
 import AppWrapper from '@/components/AppWrapper';
 import StoryCircle from '@/components/StoryCircle';
@@ -14,6 +17,8 @@ import { supabase } from '@/lib/supabase/client';
 import { Heart, MessageCircle, Loader2 } from 'lucide-react';
 
 export default function HuePage() {
+  const router = useRouter();
+  const { isVerified, loading: verifyLoading } = useVerificationStatus();
   const [stories, setStories] = useState<WallMessage[]>([]);
   const [feed, setFeed] = useState<WallMessage[]>([]);
   const [gigs, setGigs] = useState<Gig[]>([]);
@@ -23,12 +28,35 @@ export default function HuePage() {
   const [offset, setOffset] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [usersWithActiveGigs, setUsersWithActiveGigs] = useState<Set<string>>(new Set());
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [postLikeCounts, setPostLikeCounts] = useState<Map<string, number>>(new Map());
   const observerRef = useRef<HTMLDivElement>(null);
   const POSTS_PER_PAGE = 10;
+
+  useEffect(() => {
+    if (!verifyLoading && !isVerified) {
+      const timer = setTimeout(() => {
+        router.push('/wall');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [verifyLoading, isVerified, router]);
 
   const handleNavigate = (section: string) => {
     window.location.href = `/${section}`;
   };
+
+  if (verifyLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white/60 animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isVerified) {
+    return <UnverifiedGate feature="hue" variant="overlay" />;
+  }
 
   // Fetch stories (active stories that haven't expired)
   const loadStories = useCallback(async () => {
@@ -107,9 +135,20 @@ export default function HuePage() {
 
       const currentOffset = reset ? 0 : offset;
 
+      // Personalized feed query with engagement scoring
       const { data, error } = await supabase
         .from('wall_messages')
-        .select('*')
+        .select(`
+          *,
+          profiles!wall_messages_user_id_fkey (
+            username,
+            nickname,
+            verified_name,
+            verified_at,
+            profile_photo_url,
+            talent_balance
+          )
+        `)
         .eq('post_type', 'wall')
         .order('created_at', { ascending: false })
         .range(currentOffset, currentOffset + POSTS_PER_PAGE - 1);
@@ -134,6 +173,99 @@ export default function HuePage() {
       setLoadingMore(false);
     }
   }, [offset]);
+
+  // Load user's liked posts and like counts
+  const loadEngagement = useCallback(async () => {
+    if (!currentUserId) return;
+
+    try {
+      // Get user's liked posts
+      const { data: reactions } = await supabase
+        .from('reactions')
+        .select('message_id')
+        .eq('user_id', currentUserId)
+        .eq('reaction_type', 'like');
+
+      if (reactions) {
+        setLikedPosts(new Set(reactions.map(r => r.message_id)));
+      }
+
+      // Get like counts for visible posts
+      const postIds = feed.map(p => p.id);
+      if (postIds.length > 0) {
+        const { data: counts } = await supabase
+          .from('reactions')
+          .select('message_id')
+          .in('message_id', postIds)
+          .eq('reaction_type', 'like');
+
+        if (counts) {
+          const countMap = new Map<string, number>();
+          counts.forEach(c => {
+            countMap.set(c.message_id, (countMap.get(c.message_id) || 0) + 1);
+          });
+          setPostLikeCounts(countMap);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading engagement:', error);
+    }
+  }, [currentUserId, feed]);
+
+  // Toggle like on a post
+  const toggleLike = async (messageId: string) => {
+    if (!currentUserId) return;
+
+    const isLiked = likedPosts.has(messageId);
+
+    try {
+      if (isLiked) {
+        // Unlike
+        await supabase
+          .from('reactions')
+          .delete()
+          .eq('message_id', messageId)
+          .eq('user_id', currentUserId)
+          .eq('reaction_type', 'like');
+
+        setLikedPosts((prev: Set<string>) => {
+          const newSet = new Set(prev);
+          newSet.delete(messageId);
+          return newSet;
+        });
+        setPostLikeCounts((prev: Map<string, number>) => {
+          const newMap = new Map(prev);
+          newMap.set(messageId, Math.max(0, (newMap.get(messageId) || 0) - 1));
+          return newMap;
+        });
+      } else {
+        // Like
+        await supabase
+          .from('reactions')
+          .insert({
+            message_id: messageId,
+            user_id: currentUserId,
+            reaction_type: 'like',
+          });
+
+        setLikedPosts((prev: Set<string>) => new Set(prev).add(messageId));
+        setPostLikeCounts((prev: Map<string, number>) => {
+          const newMap = new Map(prev);
+          newMap.set(messageId, (newMap.get(messageId) || 0) + 1);
+          return newMap;
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
+  // Load engagement when feed changes
+  useEffect(() => {
+    if (currentUserId && feed.length > 0) {
+      loadEngagement();
+    }
+  }, [currentUserId, feed.length, loadEngagement]);
 
   // Initial load
   useEffect(() => {
@@ -175,12 +307,12 @@ export default function HuePage() {
   const renderPost = (post: WallMessage) => {
     // Check if post creator has active budge gig
     const hasActiveBudgeGig = gigs.some(
-      gig => gig.user_id === post.user_id && gig.gig_type === 'budge' && gig.has_active_story
+      gig => gig.user_id === post.user_id
     );
 
-    const profilePhotoElement = post.profile_photo ? (
+    const profilePhotoElement = post.media_url ? (
       <img
-        src={post.profile_photo}
+        src={post.media_url}
         alt={post.username}
         className={`w-8 h-8 rounded-full object-cover ${
           hasActiveBudgeGig ? 'ring-2 ring-green-500 ring-offset-2 ring-offset-black' : ''
@@ -282,8 +414,21 @@ export default function HuePage() {
             className="text-white/40 text-xs"
           />
           <div className="flex items-center gap-4 text-white/40">
-            <button className="flex items-center gap-1 hover:text-red-400 transition-colors">
-              <Heart size={16} />
+            <button 
+              onClick={() => toggleLike(post.id)}
+              className={`flex items-center gap-1 transition-colors ${
+                likedPosts.has(post.id) 
+                  ? 'text-red-500 hover:text-red-400' 
+                  : 'hover:text-red-400'
+              }`}
+            >
+              <Heart 
+                size={16} 
+                fill={likedPosts.has(post.id) ? 'currentColor' : 'none'}
+              />
+              {postLikeCounts.get(post.id) ? (
+                <span className="text-xs">{postLikeCounts.get(post.id)}</span>
+              ) : null}
             </button>
             <button className="flex items-center gap-1 hover:text-blue-400 transition-colors">
               <MessageCircle size={16} />
@@ -352,7 +497,7 @@ export default function HuePage() {
                     const gig = gigs[gigIndex];
                     feedItems.push(
                       <div key={`gig-${gig.id}`} className="mb-4">
-                        <GigCard gig={gig} currentUserId={currentUserId} />
+                        <GigCard gig={gig} currentUserId={currentUserId || undefined} />
                       </div>
                     );
                   }

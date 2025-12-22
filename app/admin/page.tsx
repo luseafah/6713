@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { 
   DollarSign, TrendingUp, Users, Shield, AlertTriangle, 
-  Eye, Ban, CheckCircle, XCircle, Crown, Activity 
+  Eye, Ban, CheckCircle, XCircle, Crown, Activity, Crosshair
 } from 'lucide-react';
+import HuntMode from '@/components/HuntMode';
+import AdminQuickActions from '@/components/AdminQuickActions';
+import AdminMoneyChatPanel from '@/components/AdminMoneyChatPanel';
 
 interface EconomicStats {
   totalTalentsInCirculation: number;
@@ -43,12 +46,15 @@ interface RecentAction {
  * - Moderation tools (ban hammer, verification queue)
  * - Fine log and action history
  * - Real-time stats
+ * - Hunt Protocol activation
  */
 export default function AdminCommandCenter() {
   const [stats, setStats] = useState<EconomicStats | null>(null);
   const [pendingVerifications, setPendingVerifications] = useState<PendingVerification[]>([]);
   const [recentActions, setRecentActions] = useState<RecentAction[]>([]);
+  const [huntTarget, setHuntTarget] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'money'>('dashboard');
 
   useEffect(() => {
     loadDashboardData();
@@ -150,6 +156,11 @@ export default function AdminCommandCenter() {
     );
   }
 
+  // Hunt Mode overlay
+  if (huntTarget) {
+    return <HuntMode targetUserId={huntTarget} onExit={() => setHuntTarget(null)} />;
+  }
+
   return (
     <div className="min-h-screen bg-black p-6">
       {/* Header */}
@@ -159,9 +170,39 @@ export default function AdminCommandCenter() {
           <h1 className="text-4xl font-bold text-yellow-500">Pope AI Command Center</h1>
         </div>
         <p className="text-white/60">The 6713 Protocol Administration Dashboard</p>
+        
+        {/* Tab Navigation */}
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`px-6 py-3 rounded-xl font-bold transition-all ${
+              activeTab === 'dashboard'
+                ? 'bg-yellow-500 text-black'
+                : 'bg-zinc-900 text-white/60 hover:text-white border border-white/10'
+            }`}
+          >
+            📊 Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('money')}
+            className={`px-6 py-3 rounded-xl font-bold transition-all ${
+              activeTab === 'money'
+                ? 'bg-green-600 text-white'
+                : 'bg-zinc-900 text-white/60 hover:text-white border border-white/10'
+            }`}
+          >
+            💰 Money Chat
+          </button>
+        </div>
       </div>
 
-      {/* Economic Vital Signs */}
+      {/* Money Chat Panel */}
+      {activeTab === 'money' && <AdminMoneyChatPanel />}
+
+      {/* Dashboard Content */}
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Economic Vital Signs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-zinc-900 border border-yellow-500/30 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
@@ -248,7 +289,16 @@ export default function AdminCommandCenter() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingVerifications.map((verification) => (
-              <div key={verification.id} className="bg-black border border-white/10 rounded-lg p-4">
+              <div key={verification.id} className="bg-black border border-white/10 rounded-lg p-4 relative group">
+                {/* Hunt Button (Top Right) */}
+                <button
+                  onClick={() => setHuntTarget(verification.user_id)}
+                  className="absolute top-2 right-2 p-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                  title="Hunt Mode"
+                >
+                  <Crosshair size={16} className="text-red-500" />
+                </button>
+
                 <div className="flex items-start gap-3 mb-3">
                   <img
                     src={verification.profile_photo_url || '/default-avatar.png'}
@@ -264,22 +314,12 @@ export default function AdminCommandCenter() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApproveVerification(verification.user_id)}
-                    className="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <CheckCircle size={16} />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleRejectVerification(verification.user_id)}
-                    className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1"
-                  >
-                    <XCircle size={16} />
-                    Reject
-                  </button>
-                </div>
+                {/* Use AdminQuickActions component */}
+                <AdminQuickActions 
+                  targetUserId={verification.user_id}
+                  onAction={loadDashboardData}
+                  variant="compact"
+                />
               </div>
             ))}
           </div>
@@ -327,6 +367,8 @@ export default function AdminCommandCenter() {
           })}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

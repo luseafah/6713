@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useVerificationStatus } from '@/hooks/useVerificationStatus';
+import UnverifiedGate from '@/components/UnverifiedGate';
 import AppWrapper from '@/components/AppWrapper';
 import StoryCircle from '@/components/StoryCircle';
 import { supabase } from '@/lib/supabase/client';
@@ -15,12 +18,35 @@ interface LiveUser {
 }
 
 export default function LivePage() {
+  const router = useRouter();
+  const { isVerified, loading: verifyLoading } = useVerificationStatus();
   const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!verifyLoading && !isVerified) {
+      const timer = setTimeout(() => {
+        router.push('/wall');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [verifyLoading, isVerified, router]);
 
   const handleNavigate = (section: string) => {
     window.location.href = `/${section}`;
   };
+
+  if (verifyLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white/60 animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isVerified) {
+    return <UnverifiedGate feature="live" variant="overlay" />;
+  }
 
   useEffect(() => {
     fetchLiveUsers();
@@ -84,8 +110,8 @@ export default function LivePage() {
   };
 
   return (
-    <main className="bg-black min-h-screen">
-      <AppWrapper onNavigate={handleNavigate}>
+    <AppWrapper onNavigate={handleNavigate} currentTab="live">
+      <main className="bg-black min-h-screen">
         <div className="pt-20 px-4 pb-24">
           {/* Header */}
           <div className="max-w-7xl mx-auto mb-6">
@@ -154,7 +180,7 @@ export default function LivePage() {
             </div>
           </div>
         </div>
-      </AppWrapper>
-    </main>
+      </main>
+    </AppWrapper>
   );
 }

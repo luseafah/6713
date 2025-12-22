@@ -6,6 +6,7 @@ import { WallMessage, Profile } from '@/types/database';
 import { supabase } from '@/lib/supabase';
 import ComaModal from './ComaModal';
 import TimeAgo from './TimeAgo';
+import QuoteButton from './QuoteButton';
 
 export default function Wall() {
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -13,6 +14,7 @@ export default function Wall() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [messages, setMessages] = useState<WallMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [quotedPhrase, setQuotedPhrase] = useState<{ phrase: string; username: string } | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [loading, setLoading] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<{ profile: Profile; username: string } | null>(null);
@@ -176,17 +178,28 @@ export default function Wall() {
   };
 
   const handleSendMessage = async () => {
+    // Block posting for unverified users
+    if (!isVerified) {
+      return;
+    }
+    
     if (!newMessage.trim() || !isVerified || cooldown > 0 || loading) return;
 
     setLoading(true);
 
     try {
+      // Prepare message content with quote if present
+      let content = newMessage;
+      if (quotedPhrase) {
+        content = `"${quotedPhrase.phrase}" - @${quotedPhrase.username}\n\n${newMessage}`;
+      }
+
       const response = await fetch('/api/wall/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: currentUserId,
-          content: newMessage,
+          content: content,
         }),
       });
 
@@ -196,6 +209,7 @@ export default function Wall() {
         setCooldown(data.cooldown || 7);
       } else if (response.ok) {
         setNewMessage('');
+        setQuotedPhrase(null); // Clear quote after sending
         setCooldown(7);
         await loadMessages();
         scrollToBottom();
@@ -227,6 +241,11 @@ export default function Wall() {
   };
 
   const handleUsernameClick = async (userId: string, username: string) => {
+    // Block profile viewing for unverified users
+    if (!isVerified) {
+      return; // Silently ignore clicks
+    }
+    
     try {
       const response = await fetch(`/api/coma/status?user_id=${userId}`);
       const data = await response.json();
@@ -291,7 +310,12 @@ export default function Wall() {
     <div className="flex flex-col h-screen bg-black">
       {/* Messages Area - No bottom nav, uses pb-12 for text alignment */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-12 space-y-4">
-        {messages.map((message) => (
+        {messages.map((message) => {
+          // Show nickname for ALL users (verified and unverified)
+          // Full names only visible when clicking to view profile
+          const displayName = message.profiles?.nickname || message.username;
+          
+          return (
           <div
             key={message.id}
             className={`${
@@ -302,12 +326,13 @@ export default function Wall() {
           >
             <div className="flex items-start gap-2">
               <button
-                onClick={() => handleUsernameClick(message.user_id, message.username)}
+                onClick={() => !isVerified ? null : handleUsernameClick(message.user_id, message.username)}
                 className={`font-bold ${
                   message.is_pope_ai ? 'text-red-400' : 'text-blue-400'
-                } hover:underline`}
+                } ${!isVerified ? 'cursor-default' : 'hover:underline cursor-pointer'}`}
+                disabled={!isVerified}
               >
-                {message.username}
+                {displayName}
               </button>
               <TimeAgo 
                 date={message.created_at} 
@@ -347,7 +372,7 @@ export default function Wall() {
                 <span className="text-sm">
                   {overrides[message.id] 
                     ? '13+' 
-                    : message.reaction_count > 13 
+                    : (message.reaction_count ?? 0) > 13 
                       ? '13+' 
                       : message.reaction_count || 0}
                 </span>
@@ -367,16 +392,22 @@ export default function Wall() {
               )}
             </div>
           </div>
-        ))}
+        );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
       <div className="border-t border-white/10 p-4">
         {!isVerified ? (
-          <p className="text-white/60 text-center">
-            Only verified users can post on the Wall
-          </p>
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
+            <p className="text-white/80 text-sm mb-2">
+              👁️ Read-only mode: Complete verification to post and interact
+            </p>
+            <p className="text-white/50 text-xs">
+              You can see the Wall, but cannot post or view profiles yet
+            </p>
+          </div>
         ) : replyingToComaUser ? (
           <div className="space-y-2">
             <p className="text-yellow-400 text-sm">
@@ -410,24 +441,50 @@ export default function Wall() {
             </button>
           </div>
         ) : (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={cooldown > 0 ? `Breathe... ${cooldown}s` : "What's on your mind?"}
-              disabled={cooldown > 0 || loading}
-              className="flex-1 bg-white/5 text-white border border-white/20 rounded px-4 py-2 focus:outline-none focus:border-white/40 disabled:opacity-50"
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={cooldown > 0 || loading || !newMessage.trim()}
-              className="bg-white text-black px-4 py-2 rounded font-medium hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Send size={18} />
-              {cooldown > 0 ? `${cooldown}s` : 'Send'}
-            </button>
+          <div className="space-y-2">
+            {/* Quote Preview */}
+            {quotedPhrase && (
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-2 flex items-start justify-between">
+                <div>
+                  <p className="text-purple-400 text-xs font-medium mb-1">Quoting</p>
+                  <p className="text-white text-sm italic">&quot;{quotedPhrase.phrase}&quot; - @{quotedPhrase.username}</p>
+                </div>
+                <button
+                  onClick={() => setQuotedPhrase(null)}
+                  className="text-white/60 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            
+            {/* Input Row */}
+            <div className="flex gap-2">
+              <QuoteButton
+                currentUserId={currentUserId}
+                isVerified={isVerified}
+                onQuote={async (phrase, userId, username) => {
+                  setQuotedPhrase({ phrase, username });
+                }}
+              />
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder={cooldown > 0 ? `Breathe... ${cooldown}s` : quotedPhrase ? "Add your comment..." : "What's on your mind?"}
+                disabled={cooldown > 0 || loading}
+                className="flex-1 bg-white/5 text-white border border-white/20 rounded px-4 py-2 focus:outline-none focus:border-white/40 disabled:opacity-50"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={cooldown > 0 || loading || !newMessage.trim()}
+                className="bg-white text-black px-4 py-2 rounded font-medium hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Send size={18} />
+                {cooldown > 0 ? `${cooldown}s` : 'Send'}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -438,6 +495,7 @@ export default function Wall() {
         onClose={() => setSelectedProfile(null)}
         profile={selectedProfile?.profile || null}
         username={selectedProfile?.username || ''}
+        currentUserId={currentUserId}
       />
     </div>
   );

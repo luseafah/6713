@@ -95,10 +95,10 @@ DECLARE
   v_end_time TIME;
 BEGIN
   -- Get user preferences
-  SELECT notification_preferences, is_verified
+  SELECT notification_preferences, (verified_at IS NOT NULL)
   INTO v_prefs, v_is_verified
   FROM profiles
-  WHERE user_id = p_user_id;
+  WHERE id = p_user_id;
 
   IF v_prefs IS NULL THEN
     RETURN TRUE; -- Default to enabled if no preferences set
@@ -279,32 +279,42 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger: Notify on new signal post (verified users only)
+-- Note: Run migration-signal-channel.sql BEFORE this migration if signal_posts doesn't exist
 CREATE OR REPLACE FUNCTION notify_signal_post()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Notify all verified users
   INSERT INTO notifications (user_id, notification_type, title, body, data, deep_link)
   SELECT 
-    user_id,
+    p.id,
     'signal',
     '🚨 Wealth Alert: New ' || NEW.signal_type || ' Signal',
     NEW.title,
     jsonb_build_object('signal_id', NEW.id, 'signal_type', NEW.signal_type),
     '/money?tab=signals&signal=' || NEW.id
-  FROM profiles
-  WHERE is_verified = TRUE
-  AND user_id != NEW.created_by
-  AND is_notification_enabled(user_id, 'signal') = TRUE;
+  FROM profiles p
+  WHERE p.verified_at IS NOT NULL
+  AND p.id != NEW.created_by
+  AND is_notification_enabled(p.id, 'signal') = TRUE;
 
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_notify_signal_post ON signal_posts;
-CREATE TRIGGER trigger_notify_signal_post
-AFTER INSERT ON signal_posts
-FOR EACH ROW
-EXECUTE FUNCTION notify_signal_post();
+-- Only create trigger if signal_posts table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'signal_posts') THEN
+    DROP TRIGGER IF EXISTS trigger_notify_signal_post ON signal_posts;
+    CREATE TRIGGER trigger_notify_signal_post
+    AFTER INSERT ON signal_posts
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_signal_post();
+    RAISE NOTICE 'Created trigger_notify_signal_post on signal_posts';
+  ELSE
+    RAISE NOTICE 'signal_posts table does not exist yet - run migration-signal-channel.sql first';
+  END IF;
+END $$;
 
 -- Trigger: Notify on Talent throw
 CREATE OR REPLACE FUNCTION notify_talent_throw()
@@ -314,8 +324,8 @@ DECLARE
 BEGIN
   -- Get thrower username
   SELECT username INTO v_thrower_username
-  FROM profiles
-  WHERE user_id = NEW.from_user_id;
+  FROM users
+  WHERE id = NEW.from_user_id;
 
   -- Notify recipient
   PERFORM create_notification(
@@ -331,12 +341,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trigger_notify_talent_throw ON talent_transactions;
-CREATE TRIGGER trigger_notify_talent_throw
-AFTER INSERT ON talent_transactions
-FOR EACH ROW
-WHEN (NEW.transaction_type = 'throw')
-EXECUTE FUNCTION notify_talent_throw();
+-- Only create trigger if talent_transactions table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'talent_transactions') THEN
+    DROP TRIGGER IF EXISTS trigger_notify_talent_throw ON talent_transactions;
+    CREATE TRIGGER trigger_notify_talent_throw
+    AFTER INSERT ON talent_transactions
+    FOR EACH ROW
+    WHEN (NEW.transaction_type = 'throw')
+    EXECUTE FUNCTION notify_talent_throw();
+    RAISE NOTICE 'Created trigger_notify_talent_throw on talent_transactions';
+  ELSE
+    RAISE NOTICE 'talent_transactions table does not exist yet - run migration-talent-throwing.sql first';
+  END IF;
+END $$;
 
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION is_notification_enabled(UUID, TEXT) TO authenticated;

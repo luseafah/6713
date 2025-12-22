@@ -9,6 +9,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nickname, setNickname] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +40,7 @@ export default function AuthPage() {
           options: {
             data: {
               username: username || email.split('@')[0],
+              display_name: nickname || username || email.split('@')[0],
             }
           }
         });
@@ -46,8 +48,9 @@ export default function AuthPage() {
         if (signUpError) throw signUpError;
 
         if (authData.user) {
-          alert('Account created! Please check your email to verify your account.');
-          window.location.href = '/wall';
+          // Redirect to Pope AI chat for verification
+          alert('Account created! Redirecting to verification chat with Pope AI...');
+          window.location.href = '/messages?verification=pending';
         }
       }
     } catch (err: any) {
@@ -121,19 +124,37 @@ export default function AuthPage() {
 
           <form onSubmit={handleAuth} className="space-y-4">
             {!isLogin && (
-              <div>
-                <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-                  placeholder="Enter username"
-                  required={!isLogin}
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
+                    Nickname
+                  </label>
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                    placeholder="Display name (shown to others)"
+                    required={!isLogin}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                    placeholder="@username (unique handle)"
+                    required={!isLogin}
+                    pattern="[a-zA-Z0-9_]+"
+                    title="Letters, numbers, and underscores only"
+                  />
+                </div>
+              </>
             )}
 
             <div>
@@ -188,7 +209,7 @@ export default function AuthPage() {
 
           {!isLogin && (
             <p className="text-white/40 text-xs text-center mt-4">
-              First user becomes Admin automatically
+              After signup, you'll chat with Pope AI for verification
             </p>
           )}
         </motion.div>

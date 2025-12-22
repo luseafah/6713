@@ -1,5 +1,15 @@
 -- Database Schema for 6713 - Sovereign Database
 
+-- Drop existing triggers to allow re-running this script
+DROP TRIGGER IF EXISTS trigger_assign_first_admin ON users;
+DROP TRIGGER IF EXISTS trigger_regenerate_coma_refills ON profiles;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- Drop existing functions
+DROP FUNCTION IF EXISTS assign_first_admin() CASCADE;
+DROP FUNCTION IF EXISTS regenerate_coma_refills() CASCADE;
+DROP FUNCTION IF EXISTS handle_new_user() CASCADE;
+
 -- Users table (authentication)
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -5,16 +5,21 @@ import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types/database';
 import SideNav from './TopBar';
 import FixedHeader from './FixedHeader';
+import UnverifiedGate from './UnverifiedGate';
+import { AnimatePresence } from 'framer-motion';
 
 interface AppWrapperProps {
   children: React.ReactNode;
   onNavigate?: (section: string) => void;
+  currentTab?: string;
 }
 
-export default function AppWrapper({ children, onNavigate }: AppWrapperProps) {
+export default function AppWrapper({ children, onNavigate, currentTab }: AppWrapperProps) {
   const [userProfile, setUserProfile] = useState<Profile | undefined>(undefined);
   const [userId, setUserId] = useState<string>('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showGate, setShowGate] = useState(false);
+  const [gateFeature, setGateFeature] = useState<'hue' | 'live' | 'menu' | 'post' | 'profile' | 'dm'>('hue');
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -42,27 +47,66 @@ export default function AppWrapper({ children, onNavigate }: AppWrapperProps) {
   }, []);
 
   const handleUpload = () => {
-    // TODO: Implement upload modal/flow
+    if (!userProfile?.verified_at) {
+      setGateFeature('post');
+      setShowGate(true);
+      return;
+    }
     console.log('Upload clicked');
     alert('Upload flow coming soon!');
+  };
+
+  const handleMenuClick = () => {
+    if (!userProfile?.verified_at && currentTab !== 'wall' && currentTab !== 'messages') {
+      setGateFeature('menu');
+      setShowGate(true);
+      return;
+    }
+    setIsMenuOpen(true);
+  };
+
+  const handleNavigate = (section: string) => {
+    // Check if unverified user trying to access locked tabs
+    if (!userProfile?.verified_at) {
+      const lockedTabs = ['hue', 'live', 'money', 'settings'];
+      if (lockedTabs.includes(section)) {
+        setGateFeature(section as any);
+        setShowGate(true);
+        setIsMenuOpen(false);
+        return;
+      }
+    }
+    
+    onNavigate?.(section);
+    setIsMenuOpen(false);
   };
 
   return (
     <>
       <FixedHeader 
-        onMenuClick={() => setIsMenuOpen(true)}
+        onMenuClick={handleMenuClick}
         onUploadClick={handleUpload}
         isVerified={userProfile?.verified_at !== null}
       />
       <SideNav 
         userProfile={userProfile} 
-        onNavigate={onNavigate}
+        onNavigate={handleNavigate}
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
       />
       <div className="pt-16">
         {children}
       </div>
+
+      {/* Unverified Gate Modal */}
+      <AnimatePresence>
+        {showGate && (
+          <UnverifiedGate 
+            feature={gateFeature}
+            variant="overlay"
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

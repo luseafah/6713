@@ -7,10 +7,12 @@ interface UseVoiceRecorderResult {
   isRecording: boolean;
   duration: number;
   audioUrl: string | null;
+  audioBlob: Blob | null;
   maxDuration: number;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<Blob | null>;
   cancelRecording: () => void;
+  resetRecording: () => void;
   uploadVoiceMessage: (blob: Blob) => Promise<string>;
 }
 
@@ -18,6 +20,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -93,6 +96,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
+        setAudioBlob(blob);
         
         // Stop all tracks
         mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
@@ -117,6 +121,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
       setIsRecording(false);
       setDuration(0);
       setAudioUrl(null);
+      setAudioBlob(null);
       chunksRef.current = [];
       
       if (timerRef.current) {
@@ -124,6 +129,13 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
         timerRef.current = null;
       }
     }
+  };
+
+  const resetRecording = () => {
+    setDuration(0);
+    setAudioUrl(null);
+    setAudioBlob(null);
+    chunksRef.current = [];
   };
 
   const uploadVoiceMessage = async (blob: Blob): Promise<string> => {
@@ -172,9 +184,13 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   return {
     isRecording,
     duration,
-    audioUrl,    maxDuration,    startRecording,
+    audioUrl,
+    audioBlob,
+    maxDuration,
+    startRecording,
     stopRecording,
     cancelRecording,
+    resetRecording,
     uploadVoiceMessage
   };
 }

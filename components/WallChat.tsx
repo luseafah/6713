@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Mic, Send, X, Zap } from 'lucide-react';
+import { Mic, Send, X, Zap, ChevronLeft, ChevronRight, Slash } from 'lucide-react';
 import { WallMessage } from '@/types/database';
 import { supabase } from '@/lib/supabase';
 import TimeAgo from './TimeAgo';
@@ -15,10 +15,12 @@ import { getSlowmodeWarning, getExpiredReplyMessage } from '@/lib/popeAI';
 const MAX_MESSAGES = 50;
 const SLOWMODE_SECONDS = 7;
 const SLOWMODE_SKIP_COST = 5; // Talent cost to skip slowmode
+const STORY_SLIDER_INTERVAL = 30; // Show slider every 30 messages
 
 export default function WallChat() {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [currentUsername, setCurrentUsername] = useState<string>('');
+  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   const [talentBalance, setTalentBalance] = useState(0);
   const [messages, setMessages] = useState<WallMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -30,9 +32,19 @@ export default function WallChat() {
   const [inputMuted, setInputMuted] = useState(false);
   const [usersWithActiveGigs, setUsersWithActiveGigs] = useState<Set<string>>(new Set());
   
+  // Heartbeat features
+  const [onlineCount, setOnlineCount] = useState(0); // 13+ minimum enforced in UI
+  const [typingCount, setTypingCount] = useState(0); // 67+ cap enforced in UI
+  const [messageCount, setMessageCount] = useState(0); // For 30-message slider trigger
+  const [storySlider, setStorySlider] = useState<{ stories: any[], position: number } | null>(null);
+  const [sliderIndex, setSliderIndex] = useState(0);
+  const [longPressMessage, setLongPressMessage] = useState<WallMessage | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdsInBuffer = useRef<Set<string>>(new Set());
   const purgedMediaUrls = useRef<string[]>([]);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const onlineHeartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const { throwTalents, throwing: isThrowing } = useThrowTalent();
   
   const voiceRecorder = useVoiceRecorder();
@@ -50,12 +62,13 @@ export default function WallChat() {
         
         const { data: userData } = await supabase
           .from('users')
-          .select('username, talent_balance')
+          .select('username, talent_balance, is_admin')
           .eq('id', user.id)
           .single();
         
         setCurrentUsername(userData?.username || 'Anonymous');
         setTalentBalance(userData?.talent_balance || 0);
+        setIsCurrentUserAdmin(userData?.is_admin || false);
       }
     };
     
@@ -140,7 +153,27 @@ export default function WallChat() {
             return trimmed;
           });
           
+          // Increment message count for Story Slider trigger
+          setMessageCount(prev => prev + 1);
+          
           scrollToBottom();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'wall_messages',
+          filter: 'post_type=eq.wall'
+        },
+        (payload) => {
+          // Handle message updates (e.g., slashing)
+          const updatedMsg = payload.new as WallMessage;
+          
+          setMessages((prev) => 
+            prev.map(msg => msg.id === updatedMsg.id ? updatedMsg : msg)
+          );
         }
       )
       .subscribe();
@@ -159,6 +192,154 @@ export default function WallChat() {
       return () => clearTimeout(timer);
     }
   }, [slowmodeCooldown]);
+
+  // Online Presence Heartbeat (13+ Ghost Baseline)
+  useEffect(() => {
+    if (!currentUserId || !currentUsername) return;
+
+    const updatePresence = async () => {
+      await supabase.rpc('update_online_presence', {
+        p_user_id: currentUserId,
+        p_username: currentUsername
+      });
+    };
+
+    // Initial update
+    updatePresence();
+
+    // Update every 30 seconds
+    const interval = setInterval(updatePresence, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [currentUserId, currentUsername]);
+
+  // Subscribe to Online Count Changes
+  useEffect(() => {
+    const fetchOnlineCount = async () => {
+      const { data, error } = await supabase.rpc('get_online_count');
+      if (!error && data !== null) {
+        setOnlineCount(data);
+      }
+    };
+
+    fetchOnlineCount();
+
+    const channel = supabase
+      .channel('online-presence')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wall_online_presence'
+        },
+        () => {
+          fetchOnlineCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Subscribe to Typing Presence Changes (67+ Cap)
+  useEffect(() => {
+    const fetchTypingCount = async () => {
+      const { data, error } = await supabase.rpc('get_typing_count');
+      if (!error && data !== null) {
+        setTypingCount(data);
+      }
+    };
+
+    fetchTypingCount();
+
+    const channel = supabase
+      .channel('typing-presence')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'wall_typing_presence'
+        },
+        () => {
+          fetchTypingCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Typing Presence Broadcasting
+  useEffect(() => {
+    if (!currentUserId || !currentUsername || !newMessage) return;
+
+    // Broadcast typing
+    const broadcastTyping = async () => {
+      await supabase.rpc('update_typing_presence', {
+        p_user_id: currentUserId,
+        p_username: currentUsername
+      });
+    };
+
+    broadcastTyping();
+
+    // Update every 2 seconds while typing
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    const interval = setInterval(broadcastTyping, 2000);
+
+    // Stop broadcasting after 3 seconds of no typing
+    typingTimeoutRef.current = setTimeout(async () => {
+      await supabase.rpc('remove_typing_presence', {
+        p_user_id: currentUserId
+      });
+      clearInterval(interval);
+    }, 3000);
+
+    return () => {
+      clearInterval(interval);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [newMessage, currentUserId, currentUsername]);
+
+  // Story Slider Trigger (Every 30 Messages)
+  useEffect(() => {
+    const checkForSlider = async () => {
+      if (messageCount > 0 && messageCount % STORY_SLIDER_INTERVAL === 0) {
+        // Fetch 3 random verified user stories
+        const { data: storyIds, error } = await supabase.rpc('insert_story_slider', {
+          p_position: messageCount
+        });
+
+        if (!error && storyIds && storyIds.length === 3) {
+          // Fetch full story data
+          const { data: stories } = await supabase
+            .from('wall_messages')
+            .select('*')
+            .in('id', storyIds);
+
+          if (stories && stories.length === 3) {
+            setStorySlider({ stories, position: messageCount });
+            setSliderIndex(0);
+          }
+        }
+      }
+    };
+
+    checkForSlider();
+  }, [messageCount]);
 
   const isMessageInBuffer = (messageId: string) => {
     return messageIdsInBuffer.current.has(messageId);
@@ -312,13 +493,142 @@ export default function WallChat() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Admin Slasher Function
+  const handleSlashMessage = async (messageId: string, reason?: string) => {
+    if (!isCurrentUserAdmin) return;
+
+    try {
+      const { data, error } = await supabase.rpc('slash_wall_message', {
+        p_message_id: messageId,
+        p_mod_user_id: currentUserId,
+        p_reason: reason || null
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        setTransientMessage('⚡ MESSAGE SLASHED BY ADMIN');
+        setTimeout(() => setTransientMessage(''), 2000);
+      }
+    } catch (error) {
+      console.error('Failed to slash message:', error);
+      alert('Failed to slash message');
+    }
+  };
+
+  // Dismiss Story Slider
+  const dismissSlider = () => {
+    setStorySlider(null);
+    setSliderIndex(0);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-black">
-      {/* Header */}
+      {/* Header with 13+ Online Ghost Indicator */}
       <div className="bg-black/80 backdrop-blur-sm border-b border-white/10 p-4">
-        <h1 className="text-2xl font-bold text-white">#Earth</h1>
-        <p className="text-white/40 text-xs">High-velocity chat · Last {MAX_MESSAGES} messages</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">#Earth</h1>
+            <p className="text-white/40 text-xs">High-velocity chat · Last {MAX_MESSAGES} messages</p>
+          </div>
+          {/* 13+ Ghost Baseline Online Count */}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-white/60 text-sm font-mono">
+              {Math.max(onlineCount, 13)}+ Online
+            </span>
+          </div>
+        </div>
       </div>
+
+      {/* Story Slider Modal (Every 30 Messages) */}
+      {storySlider && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative w-full max-w-md">
+            {/* Close Button */}
+            <button
+              onClick={dismissSlider}
+              className="absolute -top-12 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <X size={24} className="text-white" />
+            </button>
+
+            {/* Slider Title */}
+            <div className="text-center mb-4">
+              <p className="text-white/40 text-xs uppercase tracking-wider">
+                Verified Discovery
+              </p>
+              <p className="text-white text-lg font-bold">
+                Elite Town Square
+              </p>
+            </div>
+
+            {/* Story Card */}
+            <div className="relative bg-gradient-to-b from-white/10 to-black/50 rounded-2xl overflow-hidden border border-white/20">
+              {/* Story Content */}
+              <div className="aspect-[9/16] relative">
+                {storySlider.stories[sliderIndex]?.media_url ? (
+                  <img
+                    src={storySlider.stories[sliderIndex].media_url}
+                    alt="Story"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/50 to-blue-900/50">
+                    <p className="text-white text-center p-8">
+                      {storySlider.stories[sliderIndex]?.content}
+                    </p>
+                  </div>
+                )}
+
+                {/* Story Username Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/70 to-transparent">
+                  <Username
+                    username={storySlider.stories[sliderIndex]?.username}
+                    userId={storySlider.stories[sliderIndex]?.user_id}
+                    className="text-white text-lg font-bold"
+                  />
+                  <TimeAgo
+                    date={storySlider.stories[sliderIndex]?.created_at}
+                    className="text-white/60 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Navigation Arrows */}
+              <button
+                onClick={() => setSliderIndex((prev) => (prev - 1 + 3) % 3)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+              >
+                <ChevronLeft size={24} className="text-white" />
+              </button>
+              <button
+                onClick={() => setSliderIndex((prev) => (prev + 1) % 3)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+              >
+                <ChevronRight size={24} className="text-white" />
+              </button>
+
+              {/* Slider Dots */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-2 h-2 rounded-full transition-colors ${
+                      i === sliderIndex ? 'bg-white' : 'bg-white/30'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Slider Counter */}
+            <p className="text-center text-white/40 text-xs mt-4">
+              Story {sliderIndex + 1} of 3
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -421,8 +731,37 @@ export default function WallChat() {
             )}
 
             {/* Text Content */}
-            <p className="text-white text-sm">{message.content}</p>
-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="relative group/message">
+              <p className={`text-sm ${
+                (message as any).is_slashed 
+                  ? 'text-slate-400 line-through' 
+                  : 'text-white'
+              }`}>
+                {message.content}
+              </p>
+              
+              {/* Slashed Indicator */}
+              {(message as any).is_slashed && (
+                <p className="text-xs text-slate-500 mt-1 italic">
+                  ~~Slashed by moderator~~
+                  {(message as any).slash_reason && ` - ${(message as any).slash_reason}`}
+                </p>
+              )}
+
+              {/* Admin Slash Menu (Long Press) */}
+              {isCurrentUserAdmin && !(message as any).is_slashed && (
+                <button
+                  onClick={() => handleSlashMessage(message.id)}
+                  className="absolute -right-2 top-0 p-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg opacity-0 group-hover/message:opacity-100 transition-opacity border border-red-500/30"
+                  title="Slash this message (Admin)"
+                >
+                  <Slash size={14} className="text-red-400" />
+                </button>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => {
                     if (!isMessageInBuffer(message.id)) {
@@ -457,14 +796,11 @@ export default function WallChat() {
                       }
                     }}
                   />
-                )}me="text-xs text-white/40 hover:text-white/60"
-                >
-                  Reply
-                </button>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
@@ -490,6 +826,20 @@ export default function WallChat() {
 
       {/* Input Area */}
       <div className="border-t border-white/10 p-4">
+        {/* 67+ Typing Presence Indicator */}
+        {typingCount > 0 && (
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <p className="text-white/40 text-xs font-mono">
+              {typingCount >= 67 ? '67+' : typingCount} {typingCount === 1 ? 'person' : 'people'} typing...
+            </p>
+          </div>
+        )}
+
         {/* Push-to-Talk Recording Indicator */}
         {isPushToTalkActive && voiceRecorder.isRecording && (
           <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-4">

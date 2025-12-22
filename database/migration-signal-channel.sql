@@ -48,7 +48,7 @@ ON signal_posts FOR INSERT
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM profiles
-    WHERE profiles.user_id = auth.uid()
+    WHERE profiles.id = auth.uid()
     AND profiles.is_admin = TRUE
   )
 );
@@ -60,7 +60,7 @@ ON signal_posts FOR UPDATE
 USING (
   EXISTS (
     SELECT 1 FROM profiles
-    WHERE profiles.user_id = auth.uid()
+    WHERE profiles.id = auth.uid()
     AND profiles.is_admin = TRUE
   )
 );
@@ -94,7 +94,7 @@ BEGIN
   -- Verify user is admin
   SELECT is_admin INTO v_user_is_admin
   FROM profiles
-  WHERE user_id = auth.uid();
+  WHERE id = auth.uid();
 
   IF NOT v_user_is_admin THEN
     RETURN jsonb_build_object(
@@ -124,10 +124,10 @@ BEGIN
 
   -- Create notifications for all verified users
   INSERT INTO signal_notifications (signal_id, user_id)
-  SELECT v_signal_id, user_id
+  SELECT v_signal_id, id
   FROM profiles
-  WHERE is_verified = TRUE
-  AND user_id != auth.uid(); -- Don't notify admin
+  WHERE verified_at IS NOT NULL
+  AND id != auth.uid(); -- Don't notify admin
 
   GET DIAGNOSTICS v_notified_count = ROW_COUNT;
 

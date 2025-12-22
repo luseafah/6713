@@ -43,10 +43,29 @@ export default function PopeAIChat({
   useEffect(() => {
     if (userId) {
       loadThread();
+      
+      // Real-time updates every 3 seconds
       const interval = setInterval(loadThread, 3000);
-      return () => clearInterval(interval);
+      
+      // Subscribe to real-time messages
+      const channel = supabase
+        .channel('pope-ai-chat')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'dm_messages',
+          filter: threadId ? `thread_id=eq.${threadId}` : undefined,
+        }, () => {
+          loadThread();
+        })
+        .subscribe();
+      
+      return () => {
+        clearInterval(interval);
+        channel.unsubscribe();
+      };
     }
-  }, [userId]);
+  }, [userId, threadId]);
 
   const loadThread = async () => {
     try {

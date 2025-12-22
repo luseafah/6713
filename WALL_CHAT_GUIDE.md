@@ -1,11 +1,166 @@
-# Wall Chat Room Guide (#Earth)
+# Wall Chat Room Guide (#Earth) - The Heartbeat System
 
 ## Overview
-The Wall tab has been transformed into **#Earth**, a high-velocity real-time chat room with a 50-message rolling buffer. Unlike the Hue feed (infinite scroll), Wall operates as ephemeral chat with live updates.
+The Wall tab (#Earth) is the **living heartbeat** of Project 6713—a high-velocity, self-cleaning town square where "Happy Humans" interact under strict minimalist moderation. It features:
+
+- **13+ Ghost Baseline:** Always feels populated, even when empty
+- **67+ Typing Cap:** Real-time activity without status anxiety
+- **30-Message Story Slider:** Periodic verified user discovery
+- **50-Message Auto-Purge:** Lightweight, fast, ephemeral
+- **Admin Slasher Moderation:** Transparent correction without deletion
 
 ---
 
-## Core Features
+## 1. The Living Presence (Online & Typing)
+
+### 13+ Ghost Online Indicator
+The Wall never feels abandoned. At the top of the chat, a permanent label displays the online count.
+
+**Key Features:**
+- **Baseline:** Even if the server is empty, the count shows "13+ Online"
+- **Real Count:** If more than 13 people are actually online, the real number is shown
+- **Green Pulse:** A subtle green dot pulses next to the count for visual energy
+- **30-Second Heartbeat:** User presence is updated every 30 seconds
+- **2-Minute Timeout:** Users offline >2 minutes are removed from count
+
+```typescript
+// Display logic
+Math.max(onlineCount, 13) + '+ Online'
+```
+
+### 67+ Typing Presence Cap
+At the bottom, just above the input field, is the real-time typing activity monitor.
+
+**Behavior:**
+- As users type, the count updates: "3 people typing..."
+- **Cap at 67:** Once 67+ people are typing, it locks at "67+ people typing..."
+- **Animation:** Three-dot ellipsis pulse in muted Paper White
+- **2-Second Heartbeat:** Typing presence is broadcast every 2 seconds while active
+- **10-Second Timeout:** Stops showing after 10 seconds of no typing
+
+```typescript
+// Display logic
+{typingCount >= 67 ? '67+' : typingCount} people typing...
+```
+
+---
+
+## 2. The 30-Message Story Slider
+
+### Automatic Discovery Interruption
+Every 30 messages, the chat stream pauses and a **3-Story Slider** appears.
+
+**Purpose:**
+- Prevent "text fatigue" with high-fidelity visual media
+- **Elite Town Square:** Random verified users are discovered by everyone
+- Not a "Following" feed—pure serendipity
+
+**Trigger Logic:**
+- System counts every message sent
+- At exactly every 30th message (30, 60, 90...), the slider appears
+- Fetches 3 random stories from verified users across the network
+
+**UI Features:**
+- **Hue-sized (9:16) vertical thumbnails**
+- Horizontal swipe navigation
+- Tap story to view full content
+- Click Username to visit their Sound Page
+- Story counter: "Story 1 of 3"
+- Close button to dismiss and continue chatting
+
+**Database:**
+```sql
+-- Automatically called every 30 messages
+SELECT insert_story_slider(30); -- Returns 3 story IDs
+```
+
+---
+
+## 3. The 50-Message Auto-Purge Infrastructure
+
+Project 6713 has a "short memory" to remain lightweight and fast.
+
+**Mechanics:**
+- **Buffer Size:** Only the last 50 items (messages + sliders) are retained
+- **Auto-Deletion:** When the 51st message arrives, the 1st message is permanently deleted
+- **Media Cleanup:** If a purged message contains voice/image, the file is deleted from Supabase Storage
+- **No Bloat:** Ensures the app never accumulates storage waste
+
+```typescript
+const trimmed = messages.slice(-MAX_MESSAGES); // Keep last 50
+```
+
+---
+
+## 4. Admin "Slasher" Moderation
+
+Mods are the "Gardeners" of the Wall Chat. They have infinite power to correct without erasing history.
+
+### The Slash Action
+**How It Works:**
+- Admin hovers over any message
+- Clicks the red "Slash" button (icon appears on hover)
+- Message is instantly struck through: ~~Slashed Text~~
+- Text turns **Slate Grey** (#94a3b8)
+- Original content is preserved in database for audit trail
+
+**Visual Treatment:**
+```tsx
+<p className="text-slate-400 line-through">
+  {message.content}
+</p>
+<p className="text-xs text-slate-500 italic">
+  ~~Slashed by moderator~~
+</p>
+```
+
+**Philosophy:**
+- Unlike "Delete" which leaves a gap, "Slash" shows that correction happened
+- Keeps the "Happy Human" environment **transparent but clean**
+- No information is truly lost—original content is stored
+
+**Infinite Edits:**
+- Mods can slash/unslash messages infinitely
+- No 1-edit limit like regular users
+- Can add optional `slash_reason` for context
+
+**Database Functions:**
+```sql
+-- Slash a message
+SELECT slash_wall_message(
+  p_message_id := 'uuid-here',
+  p_mod_user_id := 'mod-uuid',
+  p_reason := 'Violated community guidelines' -- Optional
+);
+
+-- Undo a slash
+SELECT unslash_wall_message(
+  p_message_id := 'uuid-here',
+  p_mod_user_id := 'mod-uuid'
+);
+```
+
+---
+
+---
+
+## 5. The Functional Flow: A Human Perspective
+
+Imagine entering the Wall:
+
+1. **Status:** You see "13+ Online" at the top with a green pulse. You feel welcome, never alone.
+
+2. **Conversation:** People are chatting. The bottom says "67+ people typing..." The energy is high and alive.
+
+3. **Discovery:** After 30 messages, a Story Slider appears. You see 3 random verified artists you've never encountered. You swipe through their Hue-style stories. You tap a "Pretty Link" username and are redirected to their Sound Page.
+
+4. **Moderation:** You notice a message that looks like it violated a rule—it's ~~Slashed out in grey~~. You know a Mod is active and the square is safe.
+
+5. **Economy:** You run out of Talents to send a "Throw" post. You tap the $$$ Pill at the top of the Wall, enter the private chat with Admin, pay outside the app, and watch your balance in the Hamburger Menu update.
+
+---
+
+## Core Technical Features
 
 ### 1. **50-Message Rolling Buffer**
 - Only the last 50 messages are displayed at any time
@@ -154,6 +309,41 @@ Messages from Pope AI are visually distinct:
 
 ## Database Schema
 
+### New Heartbeat Tables
+
+```sql
+-- Admin Slasher Columns (added to wall_messages)
+ALTER TABLE wall_messages ADD COLUMN
+  is_slashed BOOLEAN DEFAULT FALSE,
+  slashed_by UUID REFERENCES users(id),
+  slashed_at TIMESTAMP WITH TIME ZONE,
+  original_content TEXT,
+  slash_reason TEXT;
+
+-- Story Slider Tracking
+CREATE TABLE wall_story_sliders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slider_position INTEGER NOT NULL, -- 30, 60, 90...
+  story_ids UUID[] NOT NULL, -- Array of 3 story IDs
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Typing Presence (67+ Cap)
+CREATE TABLE wall_typing_presence (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  username TEXT NOT NULL,
+  started_typing_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_heartbeat TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Online Presence (13+ Ghost Baseline)
+CREATE TABLE wall_online_presence (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  username TEXT NOT NULL,
+  last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
 ### Required Columns in `wall_messages`
 
 ```sql
@@ -262,6 +452,16 @@ const isInBuffer = messageIds.includes(targetMessageId);
 
 ## Advanced Features (Future)
 
+### $$$ Money Chat Integration
+The $$$ Pill at the top of Wall Chat opens a direct DM with Admin for Talent purchases.
+
+**Flow:**
+1. User taps $$$ Pill
+2. Opens Money Chat (private DM with Admin)
+3. User requests Talents, pays via external method
+4. Admin manually updates balance in database
+5. User sees new balance in Hamburger Menu
+
 ### Hue Post Sharing (1 Talent Cost)
 Not yet implemented. Will allow users to share Hue posts in the chat for 1 Talent:
 
@@ -342,6 +542,40 @@ CREATE TABLE wall_reactions (
 
 ## Testing Checklist
 
+- [ ] **13+ Online Ghost Indicator**
+  - [ ] Verify shows "13+ Online" when no users are active
+  - [ ] Shows real count when >13 users online
+  - [ ] Green pulse animation works
+  - [ ] Updates every 30 seconds
+
+- [ ] **67+ Typing Presence**
+  - [ ] Shows "X people typing..." when users type
+  - [ ] Caps at "67+ people typing..." when >67 active
+  - [ ] Three-dot ellipsis animation works
+  - [ ] Disappears 10 seconds after user stops typing
+
+- [ ] **30-Message Story Slider**
+  - [ ] Slider appears at exactly 30, 60, 90 messages
+  - [ ] Shows 3 random verified user stories
+  - [ ] Swipe navigation works (left/right arrows)
+  - [ ] Story counter shows "Story X of 3"
+  - [ ] Close button dismisses slider
+  - [ ] Username taps redirect to Sound Page
+
+- [ ] **50-Message Auto-Purge**
+  - [ ] Only last 50 messages display
+  - [ ] 51st message deletes the 1st message
+  - [ ] Voice/image media files are deleted from storage
+  - [ ] No storage bloat accumulates
+
+- [ ] **Admin Slasher Moderation**
+  - [ ] Admin sees red Slash button on message hover
+  - [ ] Clicking Slash strikes through text
+  - [ ] Text turns slate grey (#94a3b8)
+  - [ ] Shows "~~Slashed by moderator~~" label
+  - [ ] Original content preserved in database
+  - [ ] Can unslash to restore original message
+
 - [ ] Send text message
 - [ ] Wait for 7-second slowmode
 - [ ] Record and send voice message
@@ -356,6 +590,39 @@ CREATE TABLE wall_reactions (
 ---
 
 ## Troubleshooting
+
+### Online Count Not Updating
+1. Check that `update_online_presence()` function exists:
+   ```sql
+   SELECT * FROM pg_proc WHERE proname = 'update_online_presence';
+   ```
+2. Verify Supabase Realtime is enabled for `wall_online_presence`
+3. Check browser console for RPC errors
+4. Ensure 30-second heartbeat interval is running
+
+### Typing Indicator Not Showing
+1. Check that `wall_typing_presence` table exists
+2. Verify user is authenticated (typing requires auth)
+3. Check 2-second broadcast interval in useEffect
+4. Ensure cleanup function removes stale presence (10s timeout)
+
+### Story Slider Not Appearing
+1. Verify verified users have active stories:
+   ```sql
+   SELECT COUNT(*) FROM wall_messages 
+   WHERE post_type = 'story' 
+     AND expires_at > NOW() 
+     AND user_id IN (SELECT id FROM users WHERE is_verified = TRUE);
+   ```
+2. Check that `insert_story_slider()` function returns 3 story IDs
+3. Ensure message count is tracking correctly
+4. Check browser console for RPC errors
+
+### Slash Button Not Visible for Admin
+1. Verify user `is_admin = TRUE` in database
+2. Check that `isCurrentUserAdmin` state is set correctly
+3. Ensure hover effect is working (`.group-hover/message:opacity-100`)
+4. Verify `slash_wall_message()` function exists
 
 ### Messages Not Appearing in Real-Time
 1. Check Supabase Realtime is enabled:
@@ -382,9 +649,18 @@ CREATE TABLE wall_reactions (
 - [GENESIS_CLEANUP_GUIDE.md](./GENESIS_CLEANUP_GUIDE.md) - Ephemeral content architecture
 - [MEDIA_UPLOAD_GUIDE.md](./database/MEDIA_UPLOAD_GUIDE.md) - Storage bucket setup
 - [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) - Database schema reference
+- [ADMIN_GOD_MODE_GUIDE.md](./ADMIN_GOD_MODE_GUIDE.md) - Admin moderation powers
+- [MONEY_CHAT_QUICKSTART.md](./MONEY_CHAT_QUICKSTART.md) - Talent economy integration
 
 ---
 
-**Chat Room Status:** ✅ **LIVE**  
-**Last Updated:** January 2025  
-**Next Feature:** GIF support + Hue post sharing
+**Wall Chat Status:** ✅ **HEARTBEAT ACTIVE**  
+**Last Updated:** December 2025  
+**New Features:**
+- ✅ 13+ Ghost Online Indicator
+- ✅ 67+ Typing Presence Cap
+- ✅ 30-Message Story Slider
+- ✅ Admin Slasher Moderation
+- ✅ 50-Message Auto-Purge
+
+**Next Feature:** GIF support + Direct Hue post sharing

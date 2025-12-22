@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { Search, X, User, Image, Video, Mic } from 'lucide-react';
 import { debounce } from 'lodash';
-import VerifiedName from './VerifiedName';
 import { SearchResultSkeleton } from './Skeletons';
+import ComaModal from './ComaModal';
+import { Profile } from '@/types/database';
 
-type SearchTab = 'all' | 'users' | 'gigs' | 'pics' | 'videos' | 'audio';
+type SearchTab = 'all' | 'users' | 'wiki' | 'gigs' | 'pics' | 'videos' | 'audio';
 
 interface SearchResult {
   id: string;
@@ -26,7 +27,19 @@ export default function GlobalSearch() {
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const supabase = createClient();
+  const [selectedProfile, setSelectedProfile] = useState<{ profile: Profile; username: string } | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+
+  // Fetch current user on mount
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    fetchUser();
+  }, []);
 
   // Debounced search function
   const performSearch = useCallback(
@@ -44,16 +57,16 @@ export default function GlobalSearch() {
         if (tab === 'all' || tab === 'users') {
           const { data: users } = await supabase
             .from('profiles')
-            .select('id, username, verified_name, display_name, profile_photo_url')
+            .select('id, username, verified_name, display_name, profile_photo_url, nickname, first_name, last_name')
             .or(
-              `username.ilike.%${searchQuery}%,verified_name.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`
+              `username.ilike.%${searchQuery}%,verified_name.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%,nickname.ilike.%${searchQuery}%`
             )
             .eq('verification_status', 'verified')
             .limit(10);
 
           if (users) {
             searchResults.push(
-              ...users.map((u) => ({
+              ...users.map((u: any) => ({
                 id: u.id,
                 type: 'user' as const,
                 title: u.verified_name || u.display_name,
@@ -192,6 +205,49 @@ export default function GlobalSearch() {
           }
         }
 
+        // Search Wiki (profiles by first/last name, gigs, wiki/bio)
+        if (tab === 'all' || tab === 'wiki') {
+          const { data: wikiProfiles, error: wikiError } = await supabase
+            .from('profiles')
+            .select(`
+              id,
+              username,
+              first_name,
+              last_name,
+              nickname,
+              verified_name,
+              wiki,
+              profile_photo_url
+            `)
+            .or(
+              `first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,wiki.ilike.%${searchQuery}%`
+            )
+            .limit(10);
+
+          if (wikiError) {
+            console.error('Wiki search error:', wikiError);
+          }
+
+          if (wikiProfiles) {
+            searchResults.push(
+              ...wikiProfiles.map((p: any) => {
+                const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
+                
+                return {
+                  id: p.id,
+                  type: 'user' as const,
+                  title: fullName || p.nickname || p.verified_name || p.username,
+                  subtitle: `@${p.username}`,
+                  imageUrl: p.profile_photo_url,
+                  verified_name: p.verified_name,
+                  username: p.username,
+                  data: p,
+                };
+              })
+            );
+          }
+        }
+
         setResults(searchResults);
       } catch (error) {
         console.error('Search error:', error);
@@ -210,17 +266,25 @@ export default function GlobalSearch() {
     }
   }, [query, activeTab, performSearch]);
 
-  const handleResultClick = (result: SearchResult) => {
+  const handleResultClick = async (result: SearchResult) => {
     // Navigate based on result type
     if (result.type === 'user') {
-      window.location.href = `/profile/${result.data.username}`;
+      // Open profile modal instead of navigating
+      try {
+        const response = await fetch(`/api/profile?user_id=${result.id}`);
+        const profileData = await response.json();
+        setSelectedProfile({ profile: profileData, username: result.data.username });
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+      }
     } else if (result.type === 'gig') {
       window.location.href = `/gig/${result.id}`;
+      setIsOpen(false);
     } else {
       // For media, navigate to wall or search
       window.location.href = `/wall`;
+      setIsOpen(false);
     }
-    setIsOpen(false);
   };
 
   const getTypeIcon = (type: string) => {
@@ -241,6 +305,7 @@ export default function GlobalSearch() {
   const tabs: { id: SearchTab; label: string; icon: any }[] = [
     { id: 'all', label: 'All', icon: Search },
     { id: 'users', label: 'Users', icon: User },
+    { id: 'wiki', label: 'Wiki', icon: User },
     { id: 'gigs', label: 'Gigs', icon: Search },
     { id: 'pics', label: 'Pics', icon: Image },
     { id: 'videos', label: 'Videos', icon: Video },
@@ -342,13 +407,11 @@ export default function GlobalSearch() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      {result.type === 'user' && result.verified_name && result.username ? (
-                        <VerifiedName
-                          verifiedName={result.verified_name}
-                          username={result.username}
-                          size="sm"
-                          layout="stacked"
-                        />
+                      {result.type === 'user' && result.verified_name ? (
+                        <div>
+                          <p className="font-medium text-white truncate">{result.verified_name}</p>
+                          <p className="text-sm text-zinc-500 truncate">@{result.username}</p>
+                        </div>
                       ) : (
                         <>
                           <p className="font-medium text-white truncate">{result.title}</p>
@@ -384,6 +447,15 @@ export default function GlobalSearch() {
           </div>
         </div>
       )}
+
+      {/* Profile Modal */}
+      <ComaModal
+        isOpen={selectedProfile !== null}
+        onClose={() => setSelectedProfile(null)}
+        profile={selectedProfile?.profile || null}
+        username={selectedProfile?.username || ''}
+        currentUserId={currentUserId}
+      />
     </>
   );
 }

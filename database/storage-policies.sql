@@ -10,8 +10,16 @@
 -- 4. Set it to "Public" bucket
 -- 5. Then run this SQL to set up RLS policies
 
--- Enable RLS on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Drop existing policies if they exist (to allow re-running)
+DROP POLICY IF EXISTS "Public can view media" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload media" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own media" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own media" ON storage.objects;
+DROP POLICY IF EXISTS "Admins have full access to media" ON storage.objects;
+
+-- Enable RLS on storage.objects (RLS is usually already enabled by Supabase)
+-- If you get "must be owner of table" error, skip this line - RLS is already enabled
+-- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Anyone can view/download media (public read)
 CREATE POLICY "Public can view media"

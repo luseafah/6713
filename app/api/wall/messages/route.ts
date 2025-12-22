@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
       .from('wall_messages')
       .select(`
         *,
-        reaction_count:wall_reactions(count)
+        reaction_count:wall_reactions(count),
+        profiles!wall_messages_user_id_fkey(nickname, first_name, last_name)
       `)
       .order('created_at', { ascending: false })
       .limit(limit);

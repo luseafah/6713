@@ -9,21 +9,97 @@
 -- 1. EXTEND PROFILES WITH VERIFICATION FIELDS
 -- =====================================================
 
-ALTER TABLE profiles 
-ADD COLUMN IF NOT EXISTS verified_name TEXT, -- Legal/Real name (for Radio/Gigs)
-ADD COLUMN IF NOT EXISTS display_name TEXT, -- How they appear on Wall
-ADD COLUMN IF NOT EXISTS phone TEXT UNIQUE, -- For 2FA and Gig protocol
-ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-ADD COLUMN IF NOT EXISTS verification_status TEXT DEFAULT 'pending' 
-  CHECK (verification_status IN ('pending', 'photo_uploaded', 'id_verified', 'verified', 'rejected')),
-ADD COLUMN IF NOT EXISTS strike_count INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS is_shadow_banned BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS talent_balance INTEGER DEFAULT 0,
-ADD COLUMN IF NOT EXISTS profile_photo_url TEXT,
-ADD COLUMN IF NOT EXISTS id_verification_url TEXT, -- KYC provider URL/ID
-ADD COLUMN IF NOT EXISTS verification_notes TEXT, -- Admin notes
-ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE,
-ADD COLUMN IF NOT EXISTS last_fine_at TIMESTAMP WITH TIME ZONE;
+-- Add columns one by one with proper checks
+DO $$ 
+BEGIN
+  -- Add verified_name
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'verified_name') THEN
+    ALTER TABLE profiles ADD COLUMN verified_name TEXT;
+  END IF;
+  
+  -- display_name might already exist from base schema
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'display_name') THEN
+    ALTER TABLE profiles ADD COLUMN display_name TEXT;
+  END IF;
+  
+  -- Add phone
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'phone') THEN
+    ALTER TABLE profiles ADD COLUMN phone TEXT UNIQUE;
+  END IF;
+  
+  -- Add role (for admin status at profile level)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'role') THEN
+    ALTER TABLE profiles ADD COLUMN role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin'));
+  END IF;
+  
+  -- Add is_admin boolean for backward compatibility
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'is_admin') THEN
+    ALTER TABLE profiles ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add is_moderator flag
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'is_moderator') THEN
+    ALTER TABLE profiles ADD COLUMN is_moderator BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add is_verified for backward compatibility (verified_at IS NOT NULL means verified)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'is_verified') THEN
+    ALTER TABLE profiles ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add verification_status
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'verification_status') THEN
+    ALTER TABLE profiles ADD COLUMN verification_status TEXT DEFAULT 'pending' CHECK (verification_status IN ('pending', 'photo_uploaded', 'id_verified', 'verified', 'rejected'));
+  END IF;
+  
+  -- Add strike_count
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'strike_count') THEN
+    ALTER TABLE profiles ADD COLUMN strike_count INTEGER DEFAULT 0;
+  END IF;
+  
+  -- Add is_shadow_banned
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'is_shadow_banned') THEN
+    ALTER TABLE profiles ADD COLUMN is_shadow_banned BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- talent_balance might already exist from base schema
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'talent_balance') THEN
+    ALTER TABLE profiles ADD COLUMN talent_balance INTEGER DEFAULT 0;
+  END IF;
+  
+  -- Add profile_photo_url
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'profile_photo_url') THEN
+    ALTER TABLE profiles ADD COLUMN profile_photo_url TEXT;
+  END IF;
+  
+  -- Add id_verification_url
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'id_verification_url') THEN
+    ALTER TABLE profiles ADD COLUMN id_verification_url TEXT;
+  END IF;
+  
+  -- Add verification_notes
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'verification_notes') THEN
+    ALTER TABLE profiles ADD COLUMN verification_notes TEXT;
+  END IF;
+  
+  -- verified_at might already exist from base schema  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'verified_at') THEN
+    ALTER TABLE profiles ADD COLUMN verified_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  -- Add last_fine_at
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'last_fine_at') THEN
+    ALTER TABLE profiles ADD COLUMN last_fine_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+END $$;
+
+-- Sync is_admin with role for existing users
+UPDATE profiles SET is_admin = TRUE WHERE role = 'admin';
+UPDATE profiles SET is_admin = FALSE WHERE role = 'user' OR role IS NULL;
+
+-- Sync is_verified with verified_at for existing users  
+UPDATE profiles SET is_verified = TRUE WHERE verified_at IS NOT NULL;
+UPDATE profiles SET is_verified = FALSE WHERE verified_at IS NULL;
 
 -- Create index for admin queries
 CREATE INDEX IF NOT EXISTS idx_profiles_verification_status ON profiles(verification_status);
@@ -36,7 +112,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_strike_count ON profiles(strike_count);
 
 CREATE TABLE IF NOT EXISTS talent_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   transaction_type TEXT NOT NULL CHECK (
     transaction_type IN ('purchase', 'gig_fee', 'gig_refund', 'fine', 'gift', 'throw', 'receive')
   ),
@@ -46,7 +122,7 @@ CREATE TABLE IF NOT EXISTS talent_transactions (
   reference_type TEXT, -- 'gig', 'message', 'admin_action'
   description TEXT,
   payment_intent_id TEXT, -- Stripe/payment provider ID
-  admin_user_id UUID REFERENCES auth.users(id), -- If admin-initiated
+  admin_user_id UUID REFERENCES users(id), -- If admin-initiated
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -60,8 +136,8 @@ CREATE INDEX IF NOT EXISTS idx_talent_transactions_created ON talent_transaction
 
 CREATE TABLE IF NOT EXISTS admin_actions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_user_id UUID REFERENCES auth.users(id) NOT NULL,
-  target_user_id UUID REFERENCES auth.users(id),
+  admin_user_id UUID REFERENCES users(id) NOT NULL,
+  target_user_id UUID REFERENCES users(id),
   action_type TEXT NOT NULL CHECK (
     action_type IN ('strike', 'fine', 'gift', 'shadow_ban', 'unshadow_ban', 
                     'verify', 'reject', 'delete_message', 'delete_gig', 
@@ -86,7 +162,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_actions_created ON admin_actions(created_at
 
 CREATE TABLE IF NOT EXISTS payment_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  user_id UUID REFERENCES users(id) NOT NULL,
   payment_provider TEXT DEFAULT 'stripe',
   payment_intent_id TEXT UNIQUE,
   amount_usd NUMERIC(10, 2) NOT NULL,
@@ -107,14 +183,14 @@ CREATE INDEX IF NOT EXISTS idx_payment_records_status ON payment_records(status)
 
 CREATE TABLE IF NOT EXISTS verification_queue (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) UNIQUE NOT NULL,
+  user_id UUID REFERENCES users(id) UNIQUE NOT NULL,
   profile_photo_url TEXT,
   id_verification_status TEXT DEFAULT 'pending',
   admin_notes TEXT,
   priority INTEGER DEFAULT 0, -- Higher = more urgent
   submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   reviewed_at TIMESTAMP WITH TIME ZONE,
-  reviewed_by UUID REFERENCES auth.users(id)
+  reviewed_by UUID REFERENCES users(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_verification_queue_status ON verification_queue(id_verification_status);
@@ -404,9 +480,11 @@ SELECT
 -- Talent Transactions: Users see own, admins see all
 ALTER TABLE talent_transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS talent_transactions_user_own ON talent_transactions;
 CREATE POLICY talent_transactions_user_own ON talent_transactions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS talent_transactions_admin_all ON talent_transactions;
 CREATE POLICY talent_transactions_admin_all ON talent_transactions
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
@@ -415,6 +493,7 @@ CREATE POLICY talent_transactions_admin_all ON talent_transactions
 -- Admin Actions: Admins only
 ALTER TABLE admin_actions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS admin_actions_admin_only ON admin_actions;
 CREATE POLICY admin_actions_admin_only ON admin_actions
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
@@ -423,9 +502,11 @@ CREATE POLICY admin_actions_admin_only ON admin_actions
 -- Payment Records: Users see own, admins see all
 ALTER TABLE payment_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS payment_records_user_own ON payment_records;
 CREATE POLICY payment_records_user_own ON payment_records
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS payment_records_admin_all ON payment_records;
 CREATE POLICY payment_records_admin_all ON payment_records
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
@@ -434,10 +515,74 @@ CREATE POLICY payment_records_admin_all ON payment_records
 -- Verification Queue: Admins only
 ALTER TABLE verification_queue ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS verification_queue_admin_only ON verification_queue;
 CREATE POLICY verification_queue_admin_only ON verification_queue
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
   );
+
+-- =====================================================
+-- 10. HELPER: MAKE USER ADMIN
+-- =====================================================
+
+-- Function: Promote any user to admin by email (for bootstrapping)
+CREATE OR REPLACE FUNCTION make_user_admin(p_email TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  -- Find user by email
+  SELECT id INTO v_user_id
+  FROM auth.users
+  WHERE email = p_email;
+  
+  IF v_user_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'User not found');
+  END IF;
+  
+  -- Update users table
+  UPDATE users
+  SET role = 'admin'
+  WHERE id = v_user_id;
+  
+  -- Update profiles table
+  UPDATE profiles
+  SET 
+    role = 'admin',
+    is_admin = TRUE,
+    verification_status = 'verified',
+    is_verified = TRUE,
+    verified_at = NOW()
+  WHERE id = v_user_id;
+  
+  RETURN jsonb_build_object(
+    'success', true, 
+    'message', 'User promoted to admin',
+    'user_id', v_user_id
+  );
+END;
+$$;
+
+-- =====================================================
+-- BOOTSTRAP: MAKE YOURSELF ADMIN
+-- =====================================================
+-- INSTRUCTIONS:
+-- 1. First, sign up through the app with: benstrapped247@gmail.com
+-- 2. After signing up, run this in Supabase SQL Editor:
+--
+--    SELECT make_user_admin('benstrapped247@gmail.com');
+--
+-- This will promote your account to admin with full God Mode access.
+-- 
+-- NOTE: The first user to sign up is automatically admin due to the
+-- trigger_assign_first_admin trigger, so you might already be admin!
+-- 
+-- To check if you're already admin:
+--    SELECT email, role FROM users WHERE email = 'benstrapped247@gmail.com';
+-- =====================================================
 
 -- =====================================================
 -- PROTOCOL NOTICE
