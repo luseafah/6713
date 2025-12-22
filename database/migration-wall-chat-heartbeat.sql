@@ -20,7 +20,7 @@
 -- Add slash columns to wall_messages
 ALTER TABLE wall_messages
   ADD COLUMN IF NOT EXISTS is_slashed BOOLEAN DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS slashed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS slashed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS slashed_at TIMESTAMP WITH TIME ZONE,
   ADD COLUMN IF NOT EXISTS original_content TEXT, -- Preserved before slash
   ADD COLUMN IF NOT EXISTS slash_reason TEXT; -- Optional mod note
@@ -64,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_wall_story_sliders_created_at
 -- Frontend displays "X people typing..." capped at "67+ people typing..."
 
 CREATE TABLE IF NOT EXISTS wall_typing_presence (
-  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT NOT NULL,
   started_typing_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_heartbeat TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -92,7 +92,7 @@ $$ LANGUAGE plpgsql;
 -- Real count is used, but UI always shows minimum of 13+.
 
 CREATE TABLE IF NOT EXISTS wall_online_presence (
-  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT NOT NULL,
   last_seen TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -173,7 +173,7 @@ DECLARE
 BEGIN
   -- Verify the user is a moderator
   SELECT is_admin INTO v_is_mod
-  FROM users
+  FROM profiles
   WHERE id = p_mod_user_id;
 
   IF NOT v_is_mod THEN
@@ -303,7 +303,7 @@ BEGIN
     SELECT id
     FROM wall_messages
     WHERE post_type = 'story'
-      AND user_id IN (SELECT id FROM users WHERE is_verified = TRUE)
+      AND user_id IN (SELECT id FROM profiles WHERE verified_at IS NOT NULL)
       AND expires_at > NOW() -- Only active stories
     ORDER BY RANDOM()
     LIMIT 3

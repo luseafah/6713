@@ -17,7 +17,7 @@
 
 CREATE TABLE IF NOT EXISTS search_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   search_query TEXT NOT NULL,
   search_type TEXT CHECK (search_type IN ('human', 'sound', 'tag', 'gig')) NOT NULL,
   result_id UUID, -- ID of the clicked result (user_id, sound_id, tag_id, or gig_id)
@@ -86,7 +86,7 @@ CREATE INDEX idx_volatile_tags_usage ON volatile_tags(usage_count DESC);
 CREATE TABLE IF NOT EXISTS slashed_tags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tag TEXT NOT NULL UNIQUE,
-  slashed_by UUID REFERENCES users(id) ON DELETE SET NULL NOT NULL,
+  slashed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL NOT NULL,
   slash_reason TEXT,
   slashed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -177,7 +177,7 @@ BEGIN
   -- Verify user is moderator (check for admin role)
   SELECT 
     CASE 
-      WHEN EXISTS (SELECT 1 FROM users WHERE id = p_mod_user_id AND role = 'admin') THEN TRUE
+      WHEN EXISTS (SELECT 1 FROM profiles WHERE id = p_mod_user_id AND is_admin = TRUE) THEN TRUE
       ELSE FALSE
     END INTO v_is_mod;
 
@@ -213,7 +213,7 @@ BEGIN
   -- Verify user is moderator (check for admin role)
   SELECT 
     CASE 
-      WHEN EXISTS (SELECT 1 FROM users WHERE id = p_mod_user_id AND role = 'admin') THEN TRUE
+      WHEN EXISTS (SELECT 1 FROM profiles WHERE id = p_mod_user_id AND is_admin = TRUE) THEN TRUE
       ELSE FALSE
     END INTO v_is_mod;
 
@@ -254,29 +254,28 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   SELECT 
-    u.id,
-    u.username,
-    p.display_name,
+    p.id,
+    get_username(p.id) AS username,
+    p.bio AS display_name,
     CONCAT_WS(' ', p.first_name, p.last_name) AS full_name,
     p.profile_photo_url,
-    (u.verified_at IS NOT NULL) AS is_verified,
-    u.coma_status AS is_coma,
-    CASE WHEN u.coma_status THEN 100 ELSE 0 END AS coma_cost
-  FROM users u
-  LEFT JOIN profiles p ON u.id = p.id
+    (p.verified_at IS NOT NULL) AS is_verified,
+    p.coma_status AS is_coma,
+    p.coma_cost
+  FROM profiles p
   WHERE (
-    u.username ILIKE '%' || p_query || '%'
-    OR p.display_name ILIKE '%' || p_query || '%'
+    get_username(p.id) ILIKE '%' || p_query || '%'
+    OR p.bio ILIKE '%' || p_query || '%'
     OR p.first_name ILIKE '%' || p_query || '%'
     OR p.last_name ILIKE '%' || p_query || '%'
     OR CONCAT(p.first_name, ' ', p.last_name) ILIKE '%' || p_query || '%'
   )
-  AND (p_include_coma OR u.coma_status = FALSE) -- Filter COMA unless admin
-  AND u.deactivated_at IS NULL -- Exclude deactivated
+  AND (p_include_coma OR p.coma_status = FALSE) -- Filter COMA unless admin
+  AND p.deactivated_at IS NULL -- Exclude deactivated
   ORDER BY 
-    (u.verified_at IS NOT NULL) DESC, -- Verified first
-    u.coma_status ASC, -- Active before COMA
-    u.username ASC
+    (p.verified_at IS NOT NULL) DESC, -- Verified first
+    p.coma_status ASC, -- Active before COMA
+    get_username(p.id) ASC
   LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql;

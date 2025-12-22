@@ -169,74 +169,90 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: userData } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .single();
         setCurrentUser(userData);
       }
       
-      // Get profile user
-      const { data: profileData } = await supabase
-        .from('users')
-        .select(`
-          user_id,
-          username,
-          talent_balance,
-          is_coma,
-          coma_cost,
-          is_admin,
-          is_mod,
-          profiles (
-            profile_photo_url,
-            verified_name,
-            first_name,
-            last_name,
-            bio
-          )
-        `)
-        .eq('username', username)
+      // Get profile user by username
+      // First find the auth.users record by username in metadata
+      const { data: authUser, error: authError } = await supabase.rpc(
+        'get_user_by_username',
+        { p_username: username }
+      );
+      
+      if (authError || !authUser) {
+        // Fallback: Try to find via profiles table if function doesn't exist yet
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('*');
+        
+        const matchedProfile = profiles?.find(p => {
+          // We'll need to get username from auth.users for each profile
+          return false; // Temporary - needs RPC function
+        });
+        
+        if (!matchedProfile) {
+          router.push('/');
+          return;
+        }
+      }
+      
+      // Get full profile data
+      const profileUserId = authUser?.id || authUser;
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profileUserId)
         .single();
       
-      if (!profileData) {
+      if (profileError || !profileData) {
         router.push('/');
         return;
       }
       
       setProfileUser({
-        ...profileData,
-        profile_photo_url: profileData.profiles?.[0]?.profile_photo_url,
-        verified_name: profileData.profiles?.[0]?.verified_name,
-        first_name: profileData.profiles?.[0]?.first_name,
-        last_name: profileData.profiles?.[0]?.last_name,
-        bio: profileData.profiles?.[0]?.bio,
-        is_verified: !!profileData.profiles?.[0]?.verified_name,
+        user_id: profileData.id,
+        username: username, // From URL parameter
+        talent_balance: profileData.talent_balance,
+        is_coma: profileData.coma_status || false,
+        coma_cost: profileData.coma_cost || 50,
+        is_admin: profileData.is_admin || false,
+        is_mod: profileData.is_mod || false,
+        profile_photo_url: profileData.profile_photo_url,
+        verified_name: profileData.verified_name,
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        bio: profileData.bio,
+        is_verified: !!profileData.verified_at,
       });
       
       // Load anchor post
       const { data: anchor } = await supabase.rpc('get_anchor_post', {
-        p_user_id: profileData.user_id,
+        p_user_id: profileData.id,
       });
       if (anchor?.[0]) setAnchorPost(anchor[0]);
       
       // Load pinned content
       const { data: pinned } = await supabase.rpc('get_pinned_content', {
-        p_user_id: profileData.user_id,
+        p_user_id: profileData.id,
       });
       if (pinned) setPinnedContent(pinned);
       
       // Load stats
       const { data: statsData } = await supabase.rpc('get_profile_stats', {
-        p_profile_user_id: profileData.user_id,
+        p_profile_user_id: profileData.id,
         p_viewer_user_id: user?.id || null,
         p_is_stranger_view: isStrangerView,
       });
       if (statsData) setStats(statsData);
       
       // Load CPR status if own profile
-      if (user?.id === profileData.user_id) {
+      if (user?.id === profileData.id) {
         const { data: cprData } = await supabase.rpc('get_cpr_status', {
-          p_user_id: profileData.user_id,
+          p_user_id: profileData.id,
         });
         if (cprData) setCprStatus(cprData);
       }

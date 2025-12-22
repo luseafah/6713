@@ -188,7 +188,7 @@ export default function RedXUploadButtonNoDeps({ isVerified, soundId, onUploadCo
         const videosWithUsernames = await Promise.all(
           data.map(async (video) => {
             const { data: userData } = await supabase
-              .from('users')
+              .from('profiles')
               .select('username')
               .eq('id', video.creator_id)
               .single();

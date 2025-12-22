@@ -36,13 +36,13 @@ export default function MoneyPage() {
       if (user) {
         setCurrentUserId(user.id);
         
-        const { data: userData } = await supabase
-          .from('users')
+        const { data: profile } = await supabase
+          .from('profiles')
           .select('talent_balance')
           .eq('id', user.id)
           .single();
         
-        setTalentBalance(userData?.talent_balance || 0);
+        setTalentBalance(profile?.talent_balance || 0);
       }
     };
     

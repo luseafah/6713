@@ -45,6 +45,7 @@ export default function WallChat() {
   const purgedMediaUrls = useRef<string[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const onlineHeartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  
   const { throwTalents, throwing: isThrowing } = useThrowTalent();
   
   const voiceRecorder = useVoiceRecorder();
@@ -60,15 +61,15 @@ export default function WallChat() {
       if (user) {
         setCurrentUserId(user.id);
         
-        const { data: userData } = await supabase
-          .from('users')
-          .select('username, talent_balance, is_admin')
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('talent_balance, is_admin')
           .eq('id', user.id)
           .single();
         
-        setCurrentUsername(userData?.username || 'Anonymous');
-        setTalentBalance(userData?.talent_balance || 0);
-        setIsCurrentUserAdmin(userData?.is_admin || false);
+        setCurrentUsername(user.user_metadata?.username || 'Anonymous');
+        setTalentBalance(profile?.talent_balance || 0);
+        setIsCurrentUserAdmin(profile?.is_admin || false);
       }
     };
     
@@ -419,7 +420,7 @@ export default function WallChat() {
     try {
       // Deduct Talent
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({ talent_balance: talentBalance - SLOWMODE_SKIP_COST })
         .eq('id', currentUserId);
 

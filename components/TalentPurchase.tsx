@@ -1,11 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import { DollarSign, Zap, CheckCircle, Loader2 } from 'lucide-react';
+import { DollarSign, Zap, CheckCircle, Shield } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 interface TalentPackage {
   id: string;
@@ -50,52 +47,11 @@ interface TalentPurchaseProps {
 /**
  * 6713 Protocol: Talent Purchase Interface
  * 
- * Stripe integration for buying Talents
- * Exchange Rate: $1.50 = 100 Talents
+ * Admin-only manual Talent purchases
+ * Contact administrator to purchase Talents
  */
 export default function TalentPurchase({ onComplete }: TalentPurchaseProps) {
   const [selectedPackage, setSelectedPackage] = useState<TalentPackage>(TALENT_PACKAGES[2]); // Premium default
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handlePurchase = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Create Stripe Checkout Session
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId: selectedPackage.id,
-          userId: user.id,
-          talents: selectedPackage.talents,
-          priceUsd: selectedPackage.priceUsd,
-        }),
-      });
-
-      const { sessionId, error: apiError } = await response.json();
-
-      if (apiError) throw new Error(apiError);
-
-      // Redirect to Stripe Checkout
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error('Stripe not loaded');
-
-      const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
-
-      if (stripeError) throw stripeError;
-    } catch (err: any) {
-      setError(err.message || 'Failed to initiate purchase');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -168,49 +124,36 @@ export default function TalentPurchase({ onComplete }: TalentPurchaseProps) {
           </div>
 
           {/* Exchange Rate Info */}
-          <div className="bg-black border border-white/10 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between text-sm">
+          <div className="bg-black border border-yellow-500/30 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-3 mb-3">
+              <Shield size={20} className="text-yellow-500" />
+              <span className="text-yellow-500 font-bold text-lg">Manual Purchase System</span>
+            </div>
+            <div className="text-white/80 text-sm space-y-2">
+              <p>Talent purchases are currently processed manually by administrators.</p>
+              <p className="text-yellow-500/80">To purchase Talents, please contact an admin with your desired package.</p>
+            </div>
+            <div className="flex items-center justify-between text-sm mt-4 pt-4 border-t border-white/10">
               <span className="text-white/60">Exchange Rate:</span>
               <span className="text-yellow-500 font-bold">$1.50 = 100 Talents</span>
             </div>
-            <div className="flex items-center justify-between text-sm mt-2">
-              <span className="text-white/60">Payment Method:</span>
-              <span className="text-white">Credit/Debit Card (Stripe)</span>
-            </div>
           </div>
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-red-500 text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Purchase Button */}
+          {/* Contact Admin Button */}
           <button
-            onClick={handlePurchase}
-            disabled={loading}
-            className="w-full px-6 py-4 bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-lg rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            onClick={onComplete}
+            className="w-full px-6 py-4 bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-lg rounded-lg transition-colors flex items-center justify-center gap-2"
           >
-            {loading ? (
-              <>
-                <Loader2 size={24} className="animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <DollarSign size={24} />
-                Purchase {selectedPackage.talents.toLocaleString()} Talents
-              </>
-            )}
+            <Shield size={24} />
+            Contact Admin to Purchase
           </button>
         </div>
 
         {/* Protocol Notice */}
         <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-4 text-center">
           <p className="text-white/60 text-sm">
-            All Talent purchases are <span className="text-yellow-500 font-bold">final and non-refundable</span>.
-            By purchasing, you agree to the{' '}
-            <button className="text-yellow-500 hover:underline">Terms of Frequency</button>.
+            All Talent purchases are processed manually by administrators.
+            <span className="text-yellow-500 font-bold"> Purchases are final and non-refundable</span>.
           </p>
         </div>
       </div>

@@ -63,7 +63,7 @@ export default function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
       // Fetch username
       const { data: userData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('username')
         .eq('id', user.id)
         .single();

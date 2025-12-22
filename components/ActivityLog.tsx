@@ -72,7 +72,7 @@ export default function ActivityLog({ userId, limit = 50, showGlobalActions = fa
         (data || []).map(async (entry) => {
           if (entry.actor_id) {
             const { data: userData } = await supabase
-              .from('users')
+              .from('profiles')
               .select('username')
               .eq('id', entry.actor_id)
               .single();
