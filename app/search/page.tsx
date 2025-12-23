@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { FixedHeader } from '@/components/FixedHeader';
-import { StoryCircle } from '@/components/StoryCircle';
+import FixedHeader from '@/components/FixedHeader';
+import StoryCircle from '@/components/StoryCircle';
 import { useProtocolRadio } from '@/hooks/useProtocolRadio';
 import { Volume2, VolumeX, SkipForward, Play } from 'lucide-react';
 

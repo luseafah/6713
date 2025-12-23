@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { FixedHeader } from '@/components/FixedHeader';
+import FixedHeader from '@/components/FixedHeader';
 import { Bell, DollarSign, Users, MessageSquare, Radio, Moon, Clock } from 'lucide-react';
 
 interface NotificationPreferences {

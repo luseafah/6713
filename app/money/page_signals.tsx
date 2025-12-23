@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { FixedHeader } from '@/components/FixedHeader';
+import FixedHeader from '@/components/FixedHeader';
 import { TrendingUp, TrendingDown, Upload, Bell, BellOff, Coins, Megaphone } from 'lucide-react';
 import AnnouncementCard from '@/components/AnnouncementCard';
 
@@ -59,23 +59,15 @@ export default function MoneyPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_admin, is_verified')
+        .select('is_admin, is_verified, talent_balance')
         .eq('user_id', user.id)
         .single();
 
       if (profile) {
         setIsAdmin(profile.is_admin);
         setIsVerified(profile.is_verified);
+        setTalentBalance(profile.talent_balance || 0);
       }
-
-      // Fetch talent balance
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('talent_balance')
-        .eq('id', user.id)
-        .single();
-      
-      setTalentBalance(profile?.talent_balance || 0);
     }
 
     fetchUserStatus();
@@ -207,7 +199,14 @@ export default function MoneyPage() {
 
   return (
     <div className="min-h-screen bg-black pb-20">
-      <FixedHeader title="$$$4U - Money & Signals" />
+      {/* Custom Header for Money Page */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
+        <div className="flex items-center justify-center h-16 px-4">
+          <h1 className="text-xl font-bold text-white">$$$4U - Money & Signals</h1>
+        </div>
+      </div>
+      
+      <div className="pt-16">{/* Spacer for fixed header */}</div>
 
       {/* Talent Balance Header */}
       <div className="p-4 border-b border-white/10">
@@ -375,6 +374,8 @@ export default function MoneyPage() {
                 key={announcement.id}
                 announcement={announcement}
                 currentUserId={currentUserId}
+                talentBalance={talentBalance}
+                onDonationComplete={(newBalance) => setTalentBalance(newBalance)}
               />
             ))
           )
