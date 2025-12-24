@@ -47,9 +47,17 @@ BEGIN
   -- Insert profile for new user with default values
   INSERT INTO public.profiles (id, role, talent_balance, coma_status, is_admin, is_mod)
   VALUES (NEW.id, 'user', 100, FALSE, FALSE, FALSE)
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    role = EXCLUDED.role,
+    talent_balance = EXCLUDED.talent_balance,
+    coma_status = EXCLUDED.coma_status;
   
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Log the error but don't block user creation
+    RAISE WARNING 'Error in handle_new_user for %: %', NEW.id, SQLERRM;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
