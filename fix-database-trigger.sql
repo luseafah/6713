@@ -69,25 +69,31 @@ DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins have full access" ON public.profiles;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.profiles;
+DROP POLICY IF EXISTS "Enable update for users based on id" ON public.profiles;
 
 -- Anyone can view profiles
 CREATE POLICY "Anyone can view profiles" 
   ON public.profiles FOR SELECT 
   USING (true);
 
--- Users can insert their own profile (for manual upserts from app)
-CREATE POLICY "Users can insert their own profile" 
+-- Allow authenticated users to insert their own profile
+CREATE POLICY "Enable insert for authenticated users only" 
   ON public.profiles FOR INSERT 
+  TO authenticated
   WITH CHECK (auth.uid() = id);
 
--- Users can update their own profile
-CREATE POLICY "Users can update their own profile" 
+-- Allow users to update their own profile
+CREATE POLICY "Enable update for users based on id" 
   ON public.profiles FOR UPDATE 
-  USING (auth.uid() = id);
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 -- Admins have full access
 CREATE POLICY "Admins have full access" 
   ON public.profiles FOR ALL 
+  TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.profiles 
