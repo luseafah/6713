@@ -9,6 +9,8 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [nickname, setNickname] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,6 +41,8 @@ export default function AuthPage() {
           password,
           options: {
             data: {
+              first_name: firstName,
+              last_name: lastName,
               username: username || email.split('@')[0],
               display_name: nickname || username || email.split('@')[0],
             }
@@ -48,6 +52,15 @@ export default function AuthPage() {
         if (signUpError) throw signUpError;
 
         if (authData.user) {
+          // Update profile with names
+          await supabase.from('profiles').upsert({
+            id: authData.user.id,
+            first_name: firstName,
+            last_name: lastName,
+            username: username || email.split('@')[0],
+            display_name: nickname || username || email.split('@')[0],
+          });
+
           // Redirect to Pope AI chat for verification
           alert('Account created! Redirecting to verification chat with Pope AI...');
           window.location.href = '/messages?verification=pending';
@@ -125,6 +138,35 @@ export default function AuthPage() {
           <form onSubmit={handleAuth} className="space-y-4">
             {!isLogin && (
               <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                      placeholder="First"
+                      required={!isLogin}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                      placeholder="Last"
+                      required={!isLogin}
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
                     Nickname
