@@ -126,9 +126,6 @@ DROP POLICY IF EXISTS "Users can insert their own record" ON public.users;
 DROP POLICY IF EXISTS "Users can insert own record" ON public.users;
 DROP POLICY IF EXISTS "Users can update their own basic info" ON public.users;
 DROP POLICY IF EXISTS "Users can update own info" ON public.users;
-DROP POLICY IF EXISTS "Users can view users" ON public.users;
-DROP POLICY IF EXISTS "Anyone can view users" ON public.users;
-DROP POLICY IF EXISTS "Admins full access users" ON public.users;
 
 -- Profiles table policies
 DROP POLICY IF EXISTS "Edit" ON public.profiles;
@@ -142,9 +139,6 @@ DROP POLICY IF EXISTS "Enable update for users based on id" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update safe profile columns only" ON public.profiles;
-DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
-DROP POLICY IF EXISTS "Public" ON public.profiles;
-
 -- Wall messages table policies
 DROP POLICY IF EXISTS "Pope" ON public.wall_messages;
 DROP POLICY IF EXISTS "Pope has full access to wall_messages" ON public.wall_messages;
@@ -158,9 +152,6 @@ DROP POLICY IF EXISTS "Users can delete their own messages" ON public.wall_messa
 DROP POLICY IF EXISTS "Users can delete own messages" ON public.wall_messages;
 DROP POLICY IF EXISTS "Users can manage their own messages" ON public.wall_messages;
 DROP POLICY IF EXISTS "Users can update their own messages" ON public.wall_messages;
-DROP POLICY IF EXISTS "Users can update own messages" ON public.wall_messages;
-DROP POLICY IF EXISTS "Anyone can view wall messages" ON public.wall_messages;
-DROP POLICY IF EXISTS "Anyone can view wall_messages" ON public.wall_messages;
 DROP POLICY IF EXISTS "Public" ON public.wall_messages;
 
 -- Wall reactions table policies
@@ -174,9 +165,6 @@ DROP POLICY IF EXISTS "Users can add reactions" ON public.wall_reactions;
 DROP POLICY IF EXISTS "Users can delete their own reactions" ON public.wall_reactions;
 DROP POLICY IF EXISTS "Users can delete own reactions" ON public.wall_reactions;
 DROP POLICY IF EXISTS "Users can remove their own reactions" ON public.wall_reactions;
-DROP POLICY IF EXISTS "Anyone can view reactions" ON public.wall_reactions;
-DROP POLICY IF EXISTS "Anyone can view wall_reactions" ON public.wall_reactions;
-DROP POLICY IF EXISTS "Public" ON public.wall_reactions;
 
 -- Comments table policies
 DROP POLICY IF EXISTS "Reply" ON public.comments;
@@ -190,9 +178,6 @@ DROP POLICY IF EXISTS "Users can delete their own comments" ON public.comments;
 DROP POLICY IF EXISTS "Users can delete own comments" ON public.comments;
 DROP POLICY IF EXISTS "Users can manage their own comments" ON public.comments;
 DROP POLICY IF EXISTS "Users can update own comments" ON public.comments;
-DROP POLICY IF EXISTS "Anyone can view comments" ON public.comments;
-
--- DM threads table policies
 DROP POLICY IF EXISTS "&" ON public.dm_threads;
 DROP POLICY IF EXISTS "Pope" ON public.dm_threads;
 DROP POLICY IF EXISTS "Pope has full access to dm_threads" ON public.dm_threads;
@@ -206,9 +191,6 @@ DROP POLICY IF EXISTS "Users can view own dm threads" ON public.dm_threads;
 
 -- DM messages table policies
 DROP POLICY IF EXISTS "Text" ON public.dm_messages;
-DROP POLICY IF EXISTS "User" ON public.dm_messages;
-DROP POLICY IF EXISTS "Pope has full access to dm_messages" ON public.dm_messages;
-DROP POLICY IF EXISTS "Admins full access dm messages" ON public.dm_messages;
 DROP POLICY IF EXISTS "Users can send dm_messages" ON public.dm_messages;
 DROP POLICY IF EXISTS "Users can send dm messages" ON public.dm_messages;
 DROP POLICY IF EXISTS "Users can view their own dm_messages" ON public.dm_messages;
@@ -225,9 +207,6 @@ DROP POLICY IF EXISTS "Users can manage own cooldown" ON public.post_cooldowns;
 DROP POLICY IF EXISTS "Users can update their own cooldown" ON public.post_cooldowns;
 DROP POLICY IF EXISTS "Anyone can view cooldowns" ON public.post_cooldowns;
 DROP POLICY IF EXISTS "Anyone can view post_cooldowns" ON public.post_cooldowns;
-
--- CPR log table policies
-DROP POLICY IF EXISTS "Pope & " ON public.cpr_log;
 DROP POLICY IF EXISTS "Pope has full access to cpr_log" ON public.cpr_log;
 DROP POLICY IF EXISTS "View" ON public.cpr_log;
 DROP POLICY IF EXISTS "Admins full access cpr log" ON public.cpr_log;
@@ -247,9 +226,6 @@ DROP POLICY IF EXISTS "Admins full access cpr rescues" ON public.cpr_rescues;
 DROP POLICY IF EXISTS "Users can perform CPR" ON public.cpr_rescues;
 DROP POLICY IF EXISTS "Users can perform cpr" ON public.cpr_rescues;
 DROP POLICY IF EXISTS "Anyone can view cpr rescues" ON public.cpr_rescues;
-DROP POLICY IF EXISTS "Anyone can view cpr_rescues" ON public.cpr_rescues;
-
--- Fourth wall breaks table policies
 DROP POLICY IF EXISTS "Break" ON public.fourth_wall_breaks;
 DROP POLICY IF EXISTS "Pope" ON public.fourth_wall_breaks;
 DROP POLICY IF EXISTS "Pope has full access to fourth_wall_breaks" ON public.fourth_wall_breaks;
@@ -263,9 +239,6 @@ DROP POLICY IF EXISTS "Users can view their own fourth_wall_breaks" ON public.fo
 DROP POLICY IF EXISTS "Users can view own fourth wall breaks" ON public.fourth_wall_breaks;
 
 -- Admin post overrides table policies
-DROP POLICY IF EXISTS "Pope" ON public.admin_post_overrides;
-DROP POLICY IF EXISTS "Pope manages admin_post_overrides" ON public.admin_post_overrides;
-DROP POLICY IF EXISTS "APO" ON public.admin_post_overrides;
 DROP POLICY IF EXISTS "Admins can manage admin overrides" ON public.admin_post_overrides;
 DROP POLICY IF EXISTS "Anyone can view admin overrides" ON public.admin_post_overrides;
 DROP POLICY IF EXISTS "Anyone can view admin_post_overrides" ON public.admin_post_overrides;
@@ -282,9 +255,6 @@ DROP POLICY IF EXISTS "Users can update own gigs" ON public.gigs;
 DROP POLICY IF EXISTS "Anyone can read connections" ON public.gig_connections;
 DROP POLICY IF EXISTS "Users can view gig connections" ON public.gig_connections;
 DROP POLICY IF EXISTS "Gig creators can manage connections" ON public.gig_connections;
-DROP POLICY IF EXISTS "Users can create connections for their gigs" ON public.gig_connections;
-
--- Notifications table policies
 DROP POLICY IF EXISTS "Users can read their notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can view notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
@@ -301,9 +271,6 @@ DROP POLICY IF EXISTS "Anyone can view signals" ON public.signal_posts;
 -- Signal notifications table policies
 DROP POLICY IF EXISTS "Users can read their notifications" ON public.signal_notifications;
 DROP POLICY IF EXISTS "Users can view their notifications" ON public.signal_notifications;
-DROP POLICY IF EXISTS "Users can view own signal notifications" ON public.signal_notifications;
-DROP POLICY IF EXISTS "Users can update their notifications" ON public.signal_notifications;
-DROP POLICY IF EXISTS "Users can update own signal notifications" ON public.signal_notifications;
 
 -- Official announcements table policies
 DROP POLICY IF EXISTS "Admins can manage announcements" ON public.official_announcements;
@@ -366,17 +333,10 @@ DROP POLICY IF EXISTS "Anyone can view online presence" ON public.wall_online_pr
 DROP POLICY IF EXISTS "Users can manage their own online presence" ON public.wall_online_presence;
 DROP POLICY IF EXISTS "Users can manage own online presence" ON public.wall_online_presence;
 
--- =====================================================
--- PART 2: RECREATE OPTIMIZED POLICIES
--- =====================================================
--- All policies use (SELECT auth.uid()) for performance
--- Consolidated to eliminate duplicates
 
 -- =====================================================
--- USERS TABLE
--- =====================================================
 
--- Public read access
+
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -940,7 +900,6 @@ COMMIT;
 -- GROUP BY schemaname, tablename
 -- ORDER BY policy_count DESC;
 
--- Success message
 DO $$
 BEGIN
   RAISE NOTICE 'RLS performance optimizations complete! ✅';
@@ -948,3 +907,74 @@ BEGIN
   RAISE NOTICE 'Duplicate policies have been consolidated';
   RAISE NOTICE 'Duplicate indexes have been removed';
 END $$;
+
+
+-- =====================================================
+-- 2. is_admin is TRUE only for admin (admin is the only mod)
+-- 4. Explicit workflow for user verification and admin promotion
+
+-- 1. Update role column to only allow the three valid values
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_role_check CHECK (role IN ('unverified', 'verified', 'admin'));
+
+-- 2. Ensure is_admin is TRUE only for admin
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_is_admin_sync;
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_is_admin_sync CHECK (
+    (is_admin IS TRUE AND role = 'admin') OR
+    (is_admin IS FALSE AND role IN ('unverified', 'verified'))
+  );
+
+-- 3. Set correct defaults for new signups
+ALTER TABLE public.profiles
+  ALTER COLUMN role SET DEFAULT 'unverified';
+ALTER TABLE public.profiles
+  ALTER COLUMN is_admin SET DEFAULT FALSE;
+
+-- On signup: role = 'unverified', is_admin = FALSE
+-- On verification: role = 'verified', is_admin = FALSE
+-- On admin promotion: role = 'admin', is_admin = TRUE
+
+-- 5. (Optional) Add a trigger to enforce is_admin sync if needed (for legacy data)
+CREATE OR REPLACE FUNCTION public.sync_admin_only()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.role = 'admin' THEN
+    NEW.is_admin := TRUE;
+  ELSE
+    NEW.is_admin := FALSE;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_admin_only ON public.profiles;
+CREATE TRIGGER trg_sync_admin_only
+  BEFORE INSERT OR UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.sync_admin_only();
+
+-- 6. RLS policy: allow insert for new users, update for self, admin can update anyone
+DROP POLICY IF EXISTS "Allow self insert" ON public.profiles;
+CREATE POLICY "Allow self insert" ON public.profiles
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Allow self update" ON public.profiles;
+CREATE POLICY "Allow self update" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admin can update all" ON public.profiles;
+CREATE POLICY "Admin can update all" ON public.profiles
+  FOR UPDATE USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+-- 7. Indexes for performance (if not already present)
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
+CREATE INDEX IF NOT EXISTS idx_profiles_is_admin ON public.profiles(is_admin);
+
+-- 8. (Optional) Clean up legacy data to match new constraints
+-- UPDATE public.profiles SET is_admin = TRUE WHERE role = 'admin';
+-- UPDATE public.profiles SET is_admin = FALSE WHERE role IN ('unverified', 'verified');
+
+-- END WORKFLOW ENFORCEMENT
