@@ -24,28 +24,17 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        // Login with email or username
-        let loginEmail = identifier;
-        // If not an email, treat as username and look up email
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier)) {
-          // Lookup email by username
-          const { data, error: lookupError } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('username', identifier)
-            .single();
-          if (lookupError || !data?.email) throw new Error('No user found with that username');
-          loginEmail = data.email;
-        }
-        const { error } = await supabase.auth.signInWithPassword({
-          email: loginEmail,
-          password,
+        // Use new API route for login
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier, password })
         });
-        if (error) throw error;
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Login failed');
         window.location.href = '/wall';
       } else {
-        // Create new account
-        // Note: Database trigger automatically creates user + profile rows
+        // Create new account (still uses Supabase client)
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -64,7 +53,6 @@ export default function AuthPage() {
         if (authData.user) {
           // Wait a moment for trigger to create profile
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
           // Try to update profile with names (non-blocking)
           try {
             const { error: updateError } = await supabase.from('profiles').update({
@@ -73,21 +61,18 @@ export default function AuthPage() {
               username: username || email.split('@')[0],
               display_name: nickname || username || email.split('@')[0],
             }).eq('id', authData.user.id);
-            
             if (updateError) {
               console.warn('Profile update failed (non-critical):', updateError);
             }
           } catch (e) {
             console.warn('Profile update skipped');
           }
-
           // Redirect to Pope AI chat for verification
           alert('Account created! Redirecting to verification chat with Pope AI...');
           window.location.href = '/messages?verification=pending';
         }
       }
     } catch (err: any) {
-      console.error('Authentication error:', err);
       setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
@@ -203,18 +188,19 @@ export default function AuthPage() {
                 
                 <div>
                   <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
-                    Username
+                    Username <span className="text-white/40 text-xs">(no @ required)</span>
                   </label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-                    placeholder="@username (unique handle)"
+                    placeholder="username (unique handle)"
                     required={!isLogin}
                     pattern="[a-zA-Z0-9_]+"
                     title="Letters, numbers, and underscores only"
                   />
+                  <p className="text-white/30 text-xs mt-1">Choose a unique username. Do not include the @ symbol.</p>
                 </div>
               </>
             )}

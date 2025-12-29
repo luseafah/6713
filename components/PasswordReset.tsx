@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
+
 
 export default function PasswordReset() {
-  const [identifier, setIdentifier] = useState(''); // email or username
+  const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -13,19 +13,13 @@ export default function PasswordReset() {
     setError('');
     setSuccess('');
     try {
-      let email = identifier;
-      if (!identifier.includes('@')) {
-        // Lookup email by username
-        const { data, error: lookupError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('username', identifier)
-          .single();
-        if (lookupError || !data?.email) throw new Error('No user found with that username');
-        email = data.email;
-      }
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
-      if (resetError) throw resetError;
+      const res = await fetch('/api/auth/password-reset-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send reset email');
       setSuccess('Password reset email sent! Check your inbox.');
     } catch (err: any) {
       setError(err.message || 'Failed to send reset email');
