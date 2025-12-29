@@ -61,7 +61,7 @@ python3 scripts/deploy-with-service-key.py
 1. **Verify tables created**: Go to Supabase Dashboard → Table Editor
 2. **Test sign-up**: Create account at your app → should auto-create profile
 3. **Test Wall Chat**: Post a message → should appear instantly
-4. **Deploy to Vercel**: If not already deployed
+4. **Deploy to Replit**: If not already deployed
 
 ## Troubleshooting
 

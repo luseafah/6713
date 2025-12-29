@@ -1,4 +1,4 @@
-# 🔐 RLS & Security Audit for Vercel Deployment
+# 🔐 RLS & Security Audit for Replit Deployment
 
 ## ✅ RLS Enabled Tables (49 total)
 
@@ -86,7 +86,7 @@ EXISTS (
 
 ---
 
-## ⚠️ Pre-Vercel Deployment Checklist
+## ⚠️ Pre-Replit Deployment Checklist
 
 ### Environment Variables Required
 ```bash
@@ -96,7 +96,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # App
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+NEXT_PUBLIC_APP_URL=https://your-app.repl.co
 
 # Optional - for Stripe/payments
 STRIPE_SECRET_KEY=sk_live_xxx
@@ -138,10 +138,10 @@ GRANT EXECUTE ON FUNCTION create_signal_post(...) TO authenticated;
 ### 4. Supabase Auth Settings
 Go to Supabase Dashboard → Authentication → URL Configuration:
 
-- **Site URL:** `https://your-app.vercel.app`
+**Site URL:** `https://your-app.repl.co`
 - **Redirect URLs:** Add:
-  - `https://your-app.vercel.app/auth/callback`
-  - `https://your-app.vercel.app/**` (wildcard for all routes)
+  - `https://your-app.repl.co/auth/callback`
+  - `https://your-app.repl.co/**` (wildcard for all routes)
 
 ### 5. CORS Configuration ✓
 Already configured in `next.config.js`:
@@ -162,7 +162,7 @@ headers: [
 ## 🚨 Critical Security Checks
 
 ### ❌ MISSING: Anon Key vs Service Role Key
-**Action Required:** Verify your Vercel env vars:
+**Action Required:** Verify your Replit env vars:
 
 - ✅ **NEXT_PUBLIC_SUPABASE_ANON_KEY** - Use in client-side code (safe to expose)
 - ❌ **SUPABASE_SERVICE_ROLE_KEY** - NEVER expose to client, only in API routes with `SUPABASE_SERVICE_ROLE_KEY` env var
@@ -197,7 +197,7 @@ RESET ROLE;
 
 ---
 
-## 📋 Vercel Deployment Steps
+## 📋 Replit Deployment Steps
 
 1. **Push to GitHub** (if not already)
    ```bash
@@ -206,8 +206,8 @@ RESET ROLE;
    git push origin main
    ```
 
-2. **Import to Vercel**
-   - Go to https://vercel.com/new
+2. **Import to Replit**
+  - Go to https://replit.com/new
    - Import from GitHub: `luseafah/6713`
    - Framework: Next.js (auto-detected)
 
@@ -217,7 +217,7 @@ RESET ROLE;
    - Add SUPABASE_SERVICE_ROLE_KEY (keep secret!)
 
 4. **Update Supabase Redirect URLs**
-   - After first deploy, add your Vercel URL to Supabase auth settings
+  - After first deploy, add your Replit URL to Supabase auth settings
 
 5. **Test Critical Paths**
    - [ ] Sign up new user
@@ -237,7 +237,7 @@ Dashboard → Logs → Filter by:
 - RLS policy violations
 - Unusual query patterns
 
-### Vercel Function Logs
+### Replit Function Logs
 - Monitor API route errors
 - Check for 401/403 status codes
 - Watch for rate limit hits
@@ -257,11 +257,11 @@ Dashboard → Logs → Filter by:
 
 **All 49 tables have RLS enabled and proper policies configured.**
 
-The database is secure for production deployment on Vercel. Main action items:
+The database is secure for production deployment on Replit. Main action items:
 
-1. Ensure all environment variables are set in Vercel
+1. Ensure all environment variables are set in Replit
 2. Update Supabase auth redirect URLs after first deploy
 3. Test critical security paths post-deployment
 4. Monitor Supabase logs for suspicious activity
 
-**Status: READY FOR VERCEL DEPLOYMENT** 🚀
+**Status: READY FOR REPLIT DEPLOYMENT** 🚀

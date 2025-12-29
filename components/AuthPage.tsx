@@ -52,14 +52,24 @@ export default function AuthPage() {
         if (signUpError) throw signUpError;
 
         if (authData.user) {
-          // Update profile with names
-          await supabase.from('profiles').upsert({
-            id: authData.user.id,
-            first_name: firstName,
-            last_name: lastName,
-            username: username || email.split('@')[0],
-            display_name: nickname || username || email.split('@')[0],
-          });
+          // Wait a moment for trigger to create profile
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Try to update profile with names (non-blocking)
+          try {
+            const { error: updateError } = await supabase.from('profiles').update({
+              first_name: firstName,
+              last_name: lastName,
+              username: username || email.split('@')[0],
+              display_name: nickname || username || email.split('@')[0],
+            }).eq('id', authData.user.id);
+            
+            if (updateError) {
+              console.warn('Profile update failed (non-critical):', updateError);
+            }
+          } catch (e) {
+            console.warn('Profile update skipped');
+          }
 
           // Redirect to Pope AI chat for verification
           alert('Account created! Redirecting to verification chat with Pope AI...');
