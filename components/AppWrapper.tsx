@@ -58,6 +58,11 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
   };
 
   const handleMenuClick = () => {
+    // Unlock for Pope AI in admin mode
+    if (isPopeAI && isAdmin && adminView) {
+      setIsMenuOpen(true);
+      return;
+    }
     if (!userProfile?.verified_at && currentTab !== 'wall' && currentTab !== 'messages') {
       setGateFeature('menu');
       setShowGate(true);
@@ -67,6 +72,12 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
   };
 
   const handleNavigate = (section: string) => {
+    // Unlock for Pope AI in admin mode
+    if (isPopeAI && isAdmin && adminView) {
+      onNavigate?.(section);
+      setIsMenuOpen(false);
+      return;
+    }
     // Check if unverified user trying to access locked tabs
     if (!userProfile?.verified_at) {
       const lockedTabs = ['hue', 'live', 'money', 'settings'];
@@ -77,7 +88,6 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
         return;
       }
     }
-    
     onNavigate?.(section);
     setIsMenuOpen(false);
   };
@@ -93,8 +103,7 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
         onUploadClick={handleUpload}
         isVerified={userProfile?.verified_at !== null}
       />
-      {/* Pass adminView and toggle to settings modal (example usage, wire up as needed) */}
-      {/* <SettingsModal
+      <SettingsModal
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         comaStatus={userProfile?.coma_status ?? false}
@@ -107,7 +116,7 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
         isPopeAI={isPopeAI}
         adminView={adminView}
         onToggleAdminView={() => setAdminView((v) => !v)}
-      /> */}
+      />
       <SideNav 
         userProfile={userProfile} 
         onNavigate={handleNavigate}
