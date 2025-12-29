@@ -42,7 +42,7 @@ interface MoneyChatMessage {
   created_at: string;
 }
 
-export default function AdminMoneyChatPanel() {
+export default function AdminMoneyChatPanel({ adminView = false, isPopeAI = false }: { adminView?: boolean, isPopeAI?: boolean }) {
   const [pendingProofs, setPendingProofs] = useState<PaymentProof[]>([]);
   const [activeChats, setActiveChats] = useState<MoneyChatUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -55,8 +55,8 @@ export default function AdminMoneyChatPanel() {
   const [currentUserBalance, setCurrentUserBalance] = useState(0);
 
   useEffect(() => {
+    if (!adminView || !isPopeAI) return; // Only show for Pope AI in admin mode
     loadData();
-    
     // Refresh every 10 seconds
     const interval = setInterval(loadData, 10000);
     return () => clearInterval(interval);

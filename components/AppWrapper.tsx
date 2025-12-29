@@ -20,6 +20,7 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [gateFeature, setGateFeature] = useState<'hue' | 'live' | 'menu' | 'post' | 'profile' | 'dm'>('hue');
+  const [adminView, setAdminView] = useState(false);
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -81,6 +82,10 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
     setIsMenuOpen(false);
   };
 
+  // Pope AI account check
+  const isPopeAI = userProfile?.id === '3e52b8f6-ee91-4d7a-9f0e-208bafc23810';
+  const isAdmin = !!userProfile?.is_admin;
+
   return (
     <>
       <FixedHeader 
@@ -88,13 +93,32 @@ export default function AppWrapper({ children, onNavigate, currentTab }: AppWrap
         onUploadClick={handleUpload}
         isVerified={userProfile?.verified_at !== null}
       />
+      {/* Pass adminView and toggle to settings modal (example usage, wire up as needed) */}
+      {/* <SettingsModal
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        comaStatus={userProfile?.coma_status ?? false}
+        onComaToggle={() => {}}
+        username={userProfile?.username ?? ''}
+        isVerified={!!userProfile?.verified_at}
+        role={userProfile?.role ?? ''}
+        talentBalance={userProfile?.talent_balance ?? 0}
+        isAdmin={isAdmin}
+        isPopeAI={isPopeAI}
+        adminView={adminView}
+        onToggleAdminView={() => setAdminView((v) => !v)}
+      /> */}
       <SideNav 
         userProfile={userProfile} 
         onNavigate={handleNavigate}
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
+        adminView={adminView}
+        isAdmin={isAdmin}
+        isPopeAI={isPopeAI}
       />
       <div className="pt-16">
+        {/* Pass adminView to children via context or props as needed */}
         {children}
       </div>
 

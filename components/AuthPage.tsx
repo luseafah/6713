@@ -7,7 +7,8 @@ import { ExternalLink } from 'lucide-react';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState(''); // email or username
+  const [email, setEmail] = useState(''); // for signup only
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -23,15 +24,24 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        // Login existing user
+        // Login with email or username
+        let loginEmail = identifier;
+        // If not an email, treat as username and look up email
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier)) {
+          // Lookup email by username
+          const { data, error: lookupError } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', identifier)
+            .single();
+          if (lookupError || !data?.email) throw new Error('No user found with that username');
+          loginEmail = data.email;
+        }
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: loginEmail,
           password,
         });
-
         if (error) throw error;
-        
-        // Redirect will happen automatically via auth state change
         window.location.href = '/wall';
       } else {
         // Create new account
@@ -209,19 +219,35 @@ export default function AuthPage() {
               </>
             )}
 
-            <div>
-              <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-                placeholder="Enter email"
-                required
-              />
-            </div>
+            {isLogin ? (
+              <div>
+                <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
+                  Email or Username
+                </label>
+                <input
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  placeholder="Enter email or username"
+                  required
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                  placeholder="Enter email"
+                  required
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">

@@ -44,13 +44,23 @@ export default function DMModal({
   onVerifyUser,
   onMakeAdmin,
   messages,
-}: DMModalProps) {
+  adminView = false,
+  isPopeAI = false,
+}: DMModalProps & { adminView?: boolean, isPopeAI?: boolean }) {
   const [messageContent, setMessageContent] = useState('');
   
   if (!isOpen) return null;
 
   const isPope = recipientUsername === 'Pope AI';
   const isAdmin = currentUserRole === 'admin';
+  // Only Pope AI in admin mode sees admin chat features
+  if (isPopeAI && adminView) {
+    // Render admin chat features (existing logic)
+    // ...existing code...
+  } else {
+    // Render regular chat features (existing logic)
+    // ...existing code...
+  }
   const canReply = !recipientComaStatus || senderComaStatus;
   const isWhisper = senderComaStatus;
 

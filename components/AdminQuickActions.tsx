@@ -29,23 +29,25 @@ interface AdminQuickActionsProps {
 export default function AdminQuickActions({ 
   targetUserId, 
   onAction,
-  variant = 'full' 
-}: AdminQuickActionsProps) {
+  variant = 'full',
+  adminView = false,
+  isPopeAI = false
+}: AdminQuickActionsProps & { adminView?: boolean, isPopeAI?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState<string | null>(null);
+
+  if (!adminView || !isPopeAI) return null; // Only Pope AI in admin mode can see
 
   const handleVerify = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
       const { error } = await supabase.rpc('admin_approve_verification', {
         p_admin_user_id: user.id,
         p_target_user_id: targetUserId,
         p_notes: 'Quick verified via Admin Actions',
       });
-
       if (error) throw error;
       onAction?.();
     } catch (err: any) {

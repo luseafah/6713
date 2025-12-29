@@ -12,6 +12,10 @@ interface SettingsModalProps {
   isVerified: boolean;
   role: string;
   talentBalance: number;
+  isAdmin: boolean;
+  isPopeAI: boolean;
+  adminView: boolean;
+  onToggleAdminView: () => void;
 }
 
 export default function SettingsModal({
@@ -23,6 +27,10 @@ export default function SettingsModal({
   isVerified,
   role,
   talentBalance,
+  isAdmin,
+  isPopeAI,
+  adminView,
+  onToggleAdminView,
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -61,6 +69,21 @@ export default function SettingsModal({
             <span className="text-sm text-white/60">Talent Balance</span>
             <span className="text-sm font-medium text-white">{talentBalance}</span>
           </div>
+          {/* Admin View Toggle (Pope AI only) */}
+          {isPopeAI && isAdmin && (
+            <div className="flex items-center justify-between mt-4 p-2 bg-yellow-500/10 rounded-lg">
+              <span className="text-sm text-yellow-400 font-bold">Admin Mode</span>
+              <button
+                onClick={onToggleAdminView}
+                className={`relative w-14 h-8 rounded-full transition-all ${adminView ? 'bg-yellow-400' : 'bg-white/20'}`}
+                aria-label="Toggle Admin Mode"
+              >
+                <div
+                  className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${adminView ? 'translate-x-6' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* COMA Toggle */}
