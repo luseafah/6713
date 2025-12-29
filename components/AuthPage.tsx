@@ -222,7 +222,7 @@ export default function AuthPage() {
             {isLogin ? (
               <div>
                 <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
-                  Email or Username
+                  Email <span className="text-white/40">or</span> Username
                 </label>
                 <input
                   type="text"
