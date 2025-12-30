@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
+import ForgotPasswordLink from './ForgotPasswordLink';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -248,6 +249,8 @@ export default function AuthPage() {
                 required
                 minLength={6}
               />
+              {/* Show forgot password link only in login mode */}
+              <div className="mt-2">{isLogin && <ForgotPasswordLink />}</div>
             </div>
 
             {error && (
