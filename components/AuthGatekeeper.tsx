@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 import AuthPage from './AuthPage';
+import { usePathname } from 'next/navigation';
 
 interface AuthGatekeeperProps {
   children: React.ReactNode;
@@ -21,6 +22,9 @@ interface AuthGatekeeperProps {
 export default function AuthGatekeeper({ children }: AuthGatekeeperProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  // For SSR/SSG, fallback to usePathname hook (Next.js 13+)
+  // But in client, window.location.pathname is always available
 
   useEffect(() => {
     // 🚨 PROTOCOL ENFORCEMENT: No development bypass
@@ -94,11 +98,14 @@ export default function AuthGatekeeper({ children }: AuthGatekeeperProps) {
     );
   }
 
-  // 🔒 AIR-LOCK ENGAGED: Show Protocol Entry screen if no user
+  // Allow unauthenticated access to password reset pages
+  const publicRoutes = ['/reset-password', '/reset-password/confirm'];
   if (!user) {
+    if (publicRoutes.includes(pathname)) {
+      return <>{children}</>;
+    }
     return <AuthPage />;
   }
-
   // ✅ AIR-LOCK OPEN: User is authenticated, grant protocol access
   return <>{children}</>;
 }
