@@ -299,6 +299,21 @@ export default function MoneyChatPill({ onClose }: MoneyChatPillProps) {
           {messages.map((msg) => {
             const isUser = msg.sender_type === 'user';
             const isStrikethrough = msg.is_strikethrough;
+            // [NEW] Show [$$$ Chat] and [ADMIN] indicators, and fetch sender verification
+            const [senderProfile, setSenderProfile] = useState<any>(null);
+            useEffect(() => {
+              if (!msg.user_id) return;
+              let mounted = true;
+              supabase
+                .from('profiles')
+                .select('verified_at, is_admin, username')
+                .eq('id', msg.user_id)
+                .single()
+                .then(({ data }) => {
+                  if (mounted) setSenderProfile(data);
+                });
+              return () => { mounted = false; };
+            }, [msg.user_id]);
 
             return (
               <div
@@ -312,6 +327,20 @@ export default function MoneyChatPill({ onClose }: MoneyChatPillProps) {
                       : 'bg-zinc-800 text-white border border-white/10'
                   } ${isStrikethrough ? 'opacity-40 line-through' : ''}`}
                 >
+                  {/* Indicators */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs bg-green-700/30 text-green-200 px-2 py-0.5 rounded font-bold">[$$$ Chat]</span>
+                    {!isUser && (
+                      <span className="text-xs bg-purple-700/30 text-purple-200 px-2 py-0.5 rounded font-bold">[ADMIN]</span>
+                    )}
+                    {senderProfile?.verified_at && (
+                      <span className="text-xs bg-blue-700/30 text-blue-200 px-2 py-0.5 rounded font-bold">✔ Verified</span>
+                    )}
+                  </div>
+                  {/* Username (if not user) */}
+                  {!isUser && senderProfile?.username && (
+                    <div className="text-xs text-white/60 font-bold mb-1">{senderProfile.username}</div>
+                  )}
                   {/* Text Content */}
                   {msg.content && (
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>

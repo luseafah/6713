@@ -22,9 +22,7 @@ interface AuthGatekeeperProps {
 export default function AuthGatekeeper({ children }: AuthGatekeeperProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  // For SSR/SSG, fallback to usePathname hook (Next.js 13+)
-  // But in client, window.location.pathname is always available
+  const pathname = usePathname();
 
   useEffect(() => {
     // 🚨 PROTOCOL ENFORCEMENT: No development bypass

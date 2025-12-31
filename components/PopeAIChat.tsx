@@ -146,6 +146,21 @@ export default function PopeAIChat({
         {messages.map((message) => {
           const isPopeAI = message.sender_id === 'pope-ai';
           const isWhisper = message.is_whisper;
+          // [NEW] Show [Pope AI DM] and verification indicator for sender
+          const [senderProfile, setSenderProfile] = useState<any>(null);
+          useEffect(() => {
+            if (!message.sender_id || isPopeAI) return;
+            let mounted = true;
+            supabase
+              .from('profiles')
+              .select('verified_at, username')
+              .eq('id', message.sender_id)
+              .single()
+              .then(({ data }) => {
+                if (mounted) setSenderProfile(data);
+              });
+            return () => { mounted = false; };
+          }, [message.sender_id]);
 
           return (
             <div
@@ -161,6 +176,20 @@ export default function PopeAIChat({
                     : 'bg-white/10 border border-white/20'
                 }`}
               >
+                <div className="flex items-center gap-2 mb-1">
+                  {isPopeAI ? (
+                    <span className="text-xs bg-yellow-700/30 text-yellow-200 px-2 py-0.5 rounded font-bold">[Pope AI DM]</span>
+                  ) : (
+                    <span className="text-xs bg-blue-700/30 text-blue-200 px-2 py-0.5 rounded font-bold">[User DM]</span>
+                  )}
+                  {senderProfile?.verified_at && (
+                    <span className="text-xs bg-blue-700/30 text-blue-200 px-2 py-0.5 rounded font-bold">✔ Verified</span>
+                  )}
+                </div>
+                {/* Username (if not PopeAI) */}
+                {!isPopeAI && senderProfile?.username && (
+                  <div className="text-xs text-white/60 font-bold mb-1">{senderProfile.username}</div>
+                )}
                 <p className="text-white text-sm">{message.content}</p>
                 {isWhisper && !message.fourth_wall_broken && (
                   <p className="text-white/40 text-xs mt-1">

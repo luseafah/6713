@@ -30,17 +30,34 @@ export function TypingIndicator() {
   );
 }
 
+import { useEffect, useState } from 'react';
 export function MessageBubble({ 
   message, 
   isPopeAI, 
   isWhisper, 
-  isRead 
+  isRead, 
+  senderId 
 }: { 
   message: string;
   isPopeAI: boolean;
   isWhisper?: boolean;
   isRead?: boolean;
+  senderId?: string;
 }) {
+  const [senderProfile, setSenderProfile] = useState<any>(null);
+  useEffect(() => {
+    if (!senderId) return;
+    let mounted = true;
+    import('@/lib/supabase').then(({ supabase }) => {
+      supabase
+        .from('profiles')
+        .select('verified_at')
+        .eq('id', senderId)
+        .single()
+        .then(({ data }) => { if (mounted) setSenderProfile(data); });
+    });
+    return () => { mounted = false; };
+  }, [senderId]);
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -55,8 +72,12 @@ export function MessageBubble({
             : 'bg-white/10 border border-white/20'
         } ${isWhisper ? 'opacity-50 italic' : ''}`}
       >
+        <div className="flex items-center gap-2 mb-1">
+          {senderProfile?.verified_at && (
+            <span className="text-xs bg-blue-700/30 text-blue-200 px-2 py-0.5 rounded font-bold">✔ Verified</span>
+          )}
+        </div>
         <p className="text-white text-sm leading-relaxed">{message}</p>
-        
         {!isPopeAI && (
           <div className="flex items-center justify-end gap-1 mt-1">
             <span className="text-xs text-white/40">

@@ -33,6 +33,31 @@ export default function AdminQuickActions({
   adminView = false,
   isPopeAI = false
 }: AdminQuickActionsProps & { adminView?: boolean, isPopeAI?: boolean }) {
+  const [talentBalance, setTalentBalance] = useState<number | null>(null);
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [isArtist, setIsArtist] = useState<boolean | null>(null);
+  const [glazeProtocol, setGlazeProtocol] = useState<boolean | null>(null);
+  const [moderationMode, setModerationMode] = useState<boolean | null>(null);
+  const [huntMode, setHuntMode] = useState<boolean | null>(null);
+
+  // Load user status for toggles
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('talent_balance, is_verified, is_artist, glaze_protocol, moderation_mode, hunt_mode')
+        .eq('id', targetUserId)
+        .single();
+      if (!error && data) {
+        setTalentBalance(data.talent_balance);
+        setIsVerified(data.is_verified);
+        setIsArtist(data.is_artist);
+        setGlazeProtocol(data.glaze_protocol);
+        setModerationMode(data.moderation_mode);
+        setHuntMode(data.hunt_mode);
+      }
+    })();
+  }, [targetUserId]);
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState<string | null>(null);
 
@@ -153,8 +178,76 @@ export default function AdminQuickActions({
 
   return (
     <div className="space-y-3">
+      {/* Talent Balance Edit */}
+      <div className="flex items-center gap-2">
+        <span className="text-white/60 text-xs">Talent Balance:</span>
+        <input
+          type="number"
+          value={talentBalance ?? ''}
+          onChange={e => setTalentBalance(Number(e.target.value))}
+          className="w-20 px-2 py-1 rounded bg-zinc-800 text-white border border-white/10 text-xs"
+        />
+        <button
+          className="text-xs bg-green-700 text-white px-2 py-1 rounded"
+          disabled={loading}
+          onClick={async () => {
+            setLoading(true);
+            await supabase.from('profiles').update({ talent_balance: talentBalance }).eq('id', targetUserId);
+            setLoading(false);
+            onAction?.();
+          }}
+        >Save</button>
+      </div>
+      {/* Toggles */}
+      <div className="flex flex-wrap gap-2">
+        <label className="flex items-center gap-1 text-xs text-white/60">
+          <input type="checkbox" checked={!!isVerified} onChange={async e => {
+            setIsVerified(e.target.checked);
+            setLoading(true);
+            await supabase.from('profiles').update({ is_verified: e.target.checked }).eq('id', targetUserId);
+            setLoading(false);
+            onAction?.();
+          }} /> Verified
+        </label>
+        <label className="flex items-center gap-1 text-xs text-white/60">
+          <input type="checkbox" checked={!!isArtist} onChange={async e => {
+            setIsArtist(e.target.checked);
+            setLoading(true);
+            await supabase.from('profiles').update({ is_artist: e.target.checked }).eq('id', targetUserId);
+            setLoading(false);
+            onAction?.();
+          }} /> Artist
+        </label>
+        <label className="flex items-center gap-1 text-xs text-white/60">
+          <input type="checkbox" checked={!!glazeProtocol} onChange={async e => {
+            setGlazeProtocol(e.target.checked);
+            setLoading(true);
+            await supabase.from('profiles').update({ glaze_protocol: e.target.checked }).eq('id', targetUserId);
+            setLoading(false);
+            onAction?.();
+          }} /> Glaze
+        </label>
+        <label className="flex items-center gap-1 text-xs text-white/60">
+          <input type="checkbox" checked={!!moderationMode} onChange={async e => {
+            setModerationMode(e.target.checked);
+            setLoading(true);
+            await supabase.from('profiles').update({ moderation_mode: e.target.checked }).eq('id', targetUserId);
+            setLoading(false);
+            onAction?.();
+          }} /> Mod Mode
+        </label>
+        <label className="flex items-center gap-1 text-xs text-white/60">
+          <input type="checkbox" checked={!!huntMode} onChange={async e => {
+            setHuntMode(e.target.checked);
+            setLoading(true);
+            await supabase.from('profiles').update({ hunt_mode: e.target.checked }).eq('id', targetUserId);
+            setLoading(false);
+            onAction?.();
+          }} /> Hunt
+        </label>
+      </div>
       {/* Primary Actions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 mt-2">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}

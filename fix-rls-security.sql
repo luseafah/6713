@@ -143,10 +143,14 @@ DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schem
   CREATE POLICY "Users can view applications" ON public.gig_applications FOR SELECT USING (true);
 END IF; END $$;
 
--- Hue Stories
 DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'hue_stories') THEN
   DROP POLICY IF EXISTS "Anyone can view stories" ON public.hue_stories;
-  CREATE POLICY "Anyone can view stories" ON public.hue_stories FOR SELECT USING (true);
+  CREATE POLICY "Anyone except pope ai can view stories" ON public.hue_stories FOR SELECT USING (
+    auth.uid() IS NULL OR auth.uid() != '3e52b8f6-ee91-4d7a-9f0e-208bafc23810'
+  );
+  CREATE POLICY "pope ai can view own stories" ON public.hue_stories FOR SELECT USING (
+    auth.uid() = '3e52b8f6-ee91-4d7a-9f0e-208bafc23810'
+  );
 END IF; END $$;
 
 -- Signal Posts
@@ -161,10 +165,14 @@ DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schem
   CREATE POLICY "Users can view their notifications" ON public.signal_notifications FOR SELECT USING (true);
 END IF; END $$;
 
--- Money Chat Messages
 DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'money_chat_messages') THEN
   DROP POLICY IF EXISTS "Users can view their money chat" ON public.money_chat_messages;
-  CREATE POLICY "Users can view their money chat" ON public.money_chat_messages FOR SELECT USING (true);
+  CREATE POLICY "Anyone except pope ai can view money chat" ON public.money_chat_messages FOR SELECT USING (
+    auth.uid() IS NULL OR auth.uid() != '3e52b8f6-ee91-4d7a-9f0e-208bafc23810'
+  );
+  CREATE POLICY "pope ai can view own money chat" ON public.money_chat_messages FOR SELECT USING (
+    auth.uid() = '3e52b8f6-ee91-4d7a-9f0e-208bafc23810'
+  );
 END IF; END $$;
 
 -- Money Chat Metadata

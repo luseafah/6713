@@ -684,6 +684,7 @@ export default function WallChat() {
             >
               {/* Username & Timestamp */}
               <div className="flex items-center gap-2 mb-1">
+              {/* Username + Verification */}
               <Username 
                 username={message.username}
                 userId={message.user_id}
@@ -692,6 +693,25 @@ export default function WallChat() {
                   message.is_pope_ai ? 'text-red-400' : 'text-blue-400'
                 }`}
               />
+              {/* Verification indicator */}
+              {message.user_id && (
+                (() => {
+                  const [senderProfile, setSenderProfile] = useState<any>(null);
+                  useEffect(() => {
+                    let mounted = true;
+                    supabase
+                      .from('profiles')
+                      .select('verified_at')
+                      .eq('id', message.user_id)
+                      .single()
+                      .then(({ data }) => { if (mounted) setSenderProfile(data); });
+                    return () => { mounted = false; };
+                  }, [message.user_id]);
+                  return senderProfile?.verified_at ? (
+                    <span className="text-xs bg-blue-700/30 text-blue-200 px-2 py-0.5 rounded font-bold ml-1">✔ Verified</span>
+                  ) : null;
+                })()
+              )}
               {message.is_pope_ai && (
                 <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded">
                   POPE AI
