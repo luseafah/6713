@@ -25,16 +25,25 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        // Use new API route for login
+        // Ensure identifier is @username or email
+        let loginIdentifier = identifier;
+        if (loginIdentifier && !loginIdentifier.startsWith('@') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(loginIdentifier)) {
+          loginIdentifier = '@' + loginIdentifier;
+        }
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier, password })
+          body: JSON.stringify({ identifier: loginIdentifier, password })
         });
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || 'Login failed');
         window.location.href = '/wall';
       } else {
+        // Ensure username is @-prefixed
+        let signupUsername = username;
+        if (signupUsername && !signupUsername.startsWith('@')) {
+          signupUsername = '@' + signupUsername;
+        }
         // Create new account (still uses Supabase client)
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
@@ -43,8 +52,8 @@ export default function AuthPage() {
             data: {
               first_name: firstName,
               last_name: lastName,
-              username: username || email.split('@')[0],
-              display_name: nickname || username || email.split('@')[0],
+              username: signupUsername || '@' + email.split('@')[0],
+              display_name: nickname || signupUsername || '@' + email.split('@')[0],
             }
           }
         });
@@ -59,8 +68,8 @@ export default function AuthPage() {
             const { error: updateError } = await supabase.from('profiles').update({
               first_name: firstName,
               last_name: lastName,
-              username: username || email.split('@')[0],
-              display_name: nickname || username || email.split('@')[0],
+              username: signupUsername || '@' + email.split('@')[0],
+              display_name: nickname || signupUsername || '@' + email.split('@')[0],
             }).eq('id', authData.user.id);
             if (updateError) {
               console.warn('Profile update failed (non-critical):', updateError);
@@ -189,19 +198,23 @@ export default function AuthPage() {
                 
                 <div>
                   <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
-                    Username <span className="text-white/40 text-xs">(no @ required)</span>
+                    @Username <span className="text-white/40 text-xs">(must start with @)</span>
                   </label>
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      if (val && !val.startsWith('@')) val = '@' + val.replace(/^@+/, '');
+                      setUsername(val);
+                    }}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-                    placeholder="username (unique handle)"
+                    placeholder="@username (unique handle)"
                     required={!isLogin}
-                    pattern="[a-zA-Z0-9_]+"
-                    title="Letters, numbers, and underscores only"
+                    pattern="^@[a-zA-Z0-9_]+$"
+                    title="Must start with @, then letters, numbers, and underscores only"
                   />
-                  <p className="text-white/30 text-xs mt-1">Choose a unique username. Do not include the @ symbol.</p>
+                  <p className="text-white/30 text-xs mt-1">Choose a unique username. Must start with @. Letters, numbers, and underscores only.</p>
                 </div>
               </>
             )}
@@ -209,14 +222,20 @@ export default function AuthPage() {
             {isLogin ? (
               <div>
                 <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
-                  Email/<span className="text-white/40">@</span>Username
+                  Email or @Username
                 </label>
                 <input
                   type="text"
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (val && !val.startsWith('@') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val)) {
+                      val = '@' + val.replace(/^@+/, '');
+                    }
+                    setIdentifier(val);
+                  }}
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-                  placeholder="Enter email or username"
+                  placeholder="Enter email or @username"
                   required
                 />
               </div>

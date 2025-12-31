@@ -5,10 +5,14 @@ export async function POST(req: NextRequest) {
   const { identifier } = await req.json();
   let email = identifier;
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier)) {
+    let username = identifier;
+    if (username && !username.startsWith('@')) {
+      username = '@' + username.replace(/^@+/, '');
+    }
     const { data, error } = await supabase
       .from('profiles')
       .select('email')
-      .eq('username', identifier)
+      .eq('username', username)
       .single();
     if (error || !data?.email) {
       return NextResponse.json({ error: 'No user found with that username' }, { status: 404 });

@@ -13,10 +13,14 @@ export default function PasswordReset() {
     setError('');
     setSuccess('');
     try {
+      let resetIdentifier = identifier;
+      if (resetIdentifier && !resetIdentifier.startsWith('@') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(resetIdentifier)) {
+        resetIdentifier = '@' + resetIdentifier.replace(/^@+/, '');
+      }
       const res = await fetch('/api/auth/password-reset-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier }),
+        body: JSON.stringify({ identifier: resetIdentifier }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to send reset email');
@@ -32,14 +36,20 @@ export default function PasswordReset() {
     <form onSubmit={handleReset} className="space-y-4">
       <div>
         <label className="block text-white/60 text-xs uppercase tracking-widest mb-2">
-          Email or Username
+          Email or @Username
         </label>
         <input
           type="text"
           value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
+          onChange={(e) => {
+            let val = e.target.value;
+            if (val && !val.startsWith('@') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val)) {
+              val = '@' + val.replace(/^@+/, '');
+            }
+            setIdentifier(val);
+          }}
           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
-          placeholder="Enter email or username"
+          placeholder="Enter email or @username"
           required
         />
       </div>
