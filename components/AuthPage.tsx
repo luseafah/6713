@@ -204,8 +204,13 @@ export default function AuthPage() {
                     type="text"
                     value={username}
                     onChange={(e) => {
-                      let val = e.target.value;
-                      if (val && !val.startsWith('@')) val = '@' + val.replace(/^@+/, '');
+                      let val = e.target.value.trim();
+                      // Always start with a single '@'
+                      if (!val.startsWith('@')) val = '@' + val.replace(/^@+/, '');
+                      // Remove all but first '@'
+                      val = '@' + val.slice(1).replace(/@+/g, '');
+                      // Only allow letters, numbers, underscores after '@'
+                      val = val.replace(/[^@a-zA-Z0-9_]/g, '');
                       setUsername(val);
                     }}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
