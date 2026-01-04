@@ -44,14 +44,30 @@ DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Insert profile for new user with default values
-  INSERT INTO public.profiles (id, role, talent_balance, coma_status, is_admin, is_mod)
-  VALUES (NEW.id, 'user', 100, FALSE, FALSE, FALSE)
-  ON CONFLICT (id) DO UPDATE SET
-    role = EXCLUDED.role,
-    talent_balance = EXCLUDED.talent_balance,
-    coma_status = EXCLUDED.coma_status;
-  
+  -- Check if this is the first user
+  IF (SELECT COUNT(*) FROM public.profiles) = 0 THEN
+    -- First user: make admin, auto-verified, bank
+    INSERT INTO public.profiles (id, role, talent_balance, coma_status, is_admin, is_mod, verification_status, verified_at, verified_name)
+    VALUES (NEW.id, 'admin', 100, FALSE, TRUE, FALSE, 'verified', NOW(), 'Pope AI')
+    ON CONFLICT (id) DO UPDATE SET
+      role = 'admin',
+      is_admin = TRUE,
+      verification_status = 'verified',
+      verified_at = NOW(),
+      verified_name = 'Pope AI',
+      talent_balance = EXCLUDED.talent_balance,
+      coma_status = EXCLUDED.coma_status;
+  ELSE
+    -- All other users: regular user, not admin, not verified
+    INSERT INTO public.profiles (id, role, talent_balance, coma_status, is_admin, is_mod, verification_status)
+    VALUES (NEW.id, 'user', 100, FALSE, FALSE, FALSE, 'pending')
+    ON CONFLICT (id) DO UPDATE SET
+      role = 'user',
+      is_admin = FALSE,
+      verification_status = 'pending',
+      talent_balance = EXCLUDED.talent_balance,
+      coma_status = EXCLUDED.coma_status;
+  END IF;
   RETURN NEW;
 EXCEPTION
   WHEN OTHERS THEN

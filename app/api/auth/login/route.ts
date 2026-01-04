@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from('profiles')
       .select('email')
-      .eq('username', username)
+      .ilike('username', username)
       .single();
     if (error || !data?.email) {
       return NextResponse.json({ error: 'No user found with that username' }, { status: 404 });
