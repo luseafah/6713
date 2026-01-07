@@ -64,6 +64,28 @@ CREATE POLICY "Admins can view all verification photos"
     )
   );
 
+-- Policy: Admins can update any verification photo (for moderation)
+CREATE POLICY "Admins can update any verification photo"
+  ON storage.objects FOR UPDATE
+  USING (
+    bucket_id = 'pope-ai-verification' AND
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND is_admin = true
+    )
+  );
+
+-- Policy: Admins can delete any verification photo (for moderation)
+CREATE POLICY "Admins can delete any verification photo"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'pope-ai-verification' AND
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND is_admin = true
+    )
+  );
+
 -- =====================================================
 -- SUCCESS MESSAGE
 -- =====================================================

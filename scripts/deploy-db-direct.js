@@ -4,8 +4,15 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const SUPABASE_URL = 'vsxrvrtnwvslmuvykhhy.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzeHJ2cnRud3ZzbG11dnlraGh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxODU3ODEsImV4cCI6MjA4MTc2MTc4MX0.OUhpumN1urS3fL7NOjz4S_e8L3waR_agQd8bzATu09w';
+// Use environment variables instead of hardcoded credentials
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '') || 'your-project.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_KEY) {
+  console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+  console.error('Set it in your .env.local file or environment');
+  process.exit(1);
+}
 
 const migrations = [
   'INIT-MASTER-SCHEMA.sql',

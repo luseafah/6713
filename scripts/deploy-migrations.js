@@ -2,10 +2,20 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 
-const supabaseUrl = 'https://vsxrvrtnwvslmuvykhhy.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzeHJ2cnRud3ZzbG11dnlraGh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxODU3ODEsImV4cCI6MjA4MTc2MTc4MX0.OUhpumN1urS3fL7NOjz4S_e8L3waR_agQd8bzATu09w';
+// Use environment variables instead of hardcoded credentials
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing required environment variables:');
+  console.error('   NEXT_PUBLIC_SUPABASE_URL');
+  console.error('   SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { autoRefreshToken: false, persistSession: false }
+});
 
 const migrations = [
   'database/INIT-MASTER-SCHEMA.sql',

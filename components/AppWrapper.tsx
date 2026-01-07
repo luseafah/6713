@@ -6,6 +6,7 @@ import { Profile } from '@/types/database';
 import SideNav from './TopBar';
 import FixedHeader from './FixedHeader';
 import UnverifiedGate from './UnverifiedGate';
+import SettingsModal from './SettingsModal';
 import { AnimatePresence } from 'framer-motion';
 
 interface AppWrapperProps {

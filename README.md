@@ -6,6 +6,17 @@ A full-featured public chat application with verification gating, COMA status sy
 
 ## Quick Start
 
+### Deploy to Replit
+1. Click the "Import from GitHub" button on [Replit](https://replit.com)
+2. Import this repository: `https://github.com/luseafah/6713`
+3. Set environment variables in Replit's "Secrets" tab:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+   ```
+4. Click "Run" - Replit will automatically install dependencies and start the app
+
 ### Deploy to CodeSandbox
 1. Click the badge above or visit [CodeSandbox](https://codesandbox.io)
 2. Import this repository

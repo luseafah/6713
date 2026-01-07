@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Send, Shield, Image as ImageIcon } from 'lucide-react';
+import { Send, Shield, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { DMMessage } from '@/types/database';
 import { supabase } from '@/lib/supabase';
 
@@ -183,22 +184,43 @@ export default function PopeAIChat({
       ) : (
         <>
           {/* Header */}
-          <div className="border-b border-white/10 p-4 flex items-center gap-3">
-            <div className="bg-red-600 w-12 h-12 rounded-full flex items-center justify-center">
+          <motion.div
+            className="border-b border-white/10 p-4 flex items-center gap-3"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div
+              className="bg-red-600 w-12 h-12 rounded-full flex items-center justify-center"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <Shield size={24} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-white font-bold">
+            </motion.div>
+            <div className="flex-1">
+              <motion.h2
+                className="text-white font-bold"
+                key={mode} // Re-animate when mode changes
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
+              >
                 {mode === 'payment' ? '$$$' : 'Pope AI'}
-              </h2>
-              <p className="text-white/60 text-sm">
+              </motion.h2>
+              <motion.p
+                className="text-white/60 text-sm"
+                key={`desc-${mode}`} // Re-animate when mode changes
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+              >
                 {mode === 'payment' 
                   ? 'Payment proofs & talent purchases' 
                   : 'Support & Identity Verification'
                 }
-              </p>
+              </motion.p>
             </div>
-          </div>
+          </motion.div>
 
       {/* Self-Kill Warning */}
       {isLocked && (
@@ -211,56 +233,70 @@ export default function PopeAIChat({
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center text-white/40 py-8">
-            <p>
-              {mode === 'payment' 
-                ? 'Welcome to $$$' 
-                : 'Welcome to Pope AI Support'
-              }
-            </p>
-            <p className="text-sm mt-2">
-              {mode === 'payment'
-                ? 'Send payment proofs or use quick options below'
-                : 'Send a message or photo for identity verification'
-              }
-            </p>
-          </div>
-        )}
-
-        {messages.map((message) => {
-          const isPopeAI = message.sender_id === 'pope-ai';
-          const isWhisper = message.is_whisper;
-          // [NEW] Show [Pope AI DM] and verification indicator for sender
-          const [senderProfile, setSenderProfile] = useState<any>(null);
-          useEffect(() => {
-            if (!message.sender_id || isPopeAI) return;
-            let mounted = true;
-            supabase
-              .from('profiles')
-              .select('verified_at, username')
-              .eq('id', message.sender_id)
-              .single()
-              .then(({ data }) => {
-                if (mounted) setSenderProfile(data);
-              });
-            return () => { mounted = false; };
-          }, [message.sender_id]);
-
-          return (
-            <div
-              key={message.id}
-              className={`flex ${isPopeAI ? 'justify-start' : 'justify-end'}`}
+        <AnimatePresence mode="wait">
+          {messages.length === 0 && (
+            <motion.div
+              className="text-center text-white/40 py-8"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.3 }}
             >
-              <div
-                className={`max-w-[70%] rounded-lg p-3 ${
-                  isPopeAI
-                    ? 'bg-red-900/20 border border-red-500/30'
-                    : isWhisper
-                    ? 'bg-white/5 border border-white/10 opacity-50 italic'
-                    : 'bg-white/10 border border-white/20'
-                }`}
+              <motion.p
+                key={mode}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
               >
+                {mode === 'payment' 
+                  ? 'Welcome to $$$' 
+                  : 'Welcome to Pope AI Support'
+                }
+              </motion.p>
+              <motion.p
+                className="text-sm mt-2"
+                key={`sub-${mode}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+              >
+                {mode === 'payment'
+                  ? 'Send payment proofs or use quick options below'
+                  : 'Send a message or photo for identity verification'
+                }
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {messages.map((message, index) => {
+            const isPopeAI = message.sender_id === 'pope-ai';
+            const isWhisper = message.is_whisper;
+
+            return (
+              <motion.div
+                key={message.id}
+                className={`flex ${isPopeAI ? 'justify-start' : 'justify-end'}`}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{
+                  duration: 0.3,
+                  delay: index * 0.05, // Staggered animation
+                  type: "spring",
+                  stiffness: 100
+                }}
+              >
+                <div
+                  className={`max-w-[70%] rounded-lg p-3 ${
+                    isPopeAI
+                      ? 'bg-red-900/20 border border-red-500/30'
+                      : isWhisper
+                      ? 'bg-white/5 border border-white/10 opacity-50 italic'
+                      : 'bg-white/10 border border-white/20'
+                  }`}
+                >
                 <div className="flex items-center gap-2 mb-1">
                   {isPopeAI ? (
                     <span className="text-xs bg-yellow-700/30 text-yellow-200 px-2 py-0.5 rounded font-bold">[Pope AI DM]</span>
@@ -305,27 +341,47 @@ export default function PopeAIChat({
         
         {/* Moving Watermarks - appear as messages accumulate */}
         {messages.length >= 3 && mode === 'verification' && (
-          <div className="text-center text-white/20 py-4 text-sm italic">
+          <motion.div
+            className="text-center text-white/20 py-4 text-sm italic"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+          >
             💡 Upload a photo of your ID or face for identity verification
-          </div>
+          </motion.div>
         )}
         
         {messages.length >= 5 && mode === 'verification' && (
-          <div className="text-center text-white/20 py-4 text-sm italic">
+          <motion.div
+            className="text-center text-white/20 py-4 text-sm italic"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+          >
             📝 Send a message explaining your verification needs
-          </div>
+          </motion.div>
         )}
         
         {messages.length >= 3 && mode === 'payment' && (
-          <div className="text-center text-white/20 py-4 text-sm italic">
+          <motion.div
+            className="text-center text-white/20 py-4 text-sm italic"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+          >
             💰 Send payment proofs or use quick options to buy talents
-          </div>
+          </motion.div>
         )}
         
         {messages.length >= 5 && mode === 'payment' && (
-          <div className="text-center text-white/20 py-4 text-sm italic">
+          <motion.div
+            className="text-center text-white/20 py-4 text-sm italic"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+          >
             📊 Use the quick options below or send payment details manually
-          </div>
+          </motion.div>
         )}
 
         <div ref={messagesEndRef} />
@@ -353,177 +409,263 @@ export default function PopeAIChat({
       )}
 
       {/* Input Area */}
-      <div className="border-t border-white/10 p-4">
+      <motion.div
+        className="border-t border-white/10 p-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+      >
         {/* Quick Options for $$$ Chat */}
-        {mode === 'payment' && (
-          <div className="mb-4 space-y-3">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowBuyTalents(!showBuyTalents)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+        <AnimatePresence>
+          {mode === 'payment' && (
+            <motion.div
+              className="mb-4 space-y-3"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                className="flex gap-2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
               >
-                💰 Buy Talents
-              </button>
-              <button
-                onClick={() => setShowReport(!showReport)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
-              >
-                📋 Report
-              </button>
-            </div>
+                <motion.button
+                  onClick={() => setShowBuyTalents(!showBuyTalents)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  💰 Buy Talents
+                </motion.button>
+                <motion.button
+                  onClick={() => setShowReport(!showReport)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  📋 Report
+                </motion.button>
+              </motion.div>
 
-            {/* Buy Talents Form */}
-            {showBuyTalents && (
-              <div className="bg-green-900/20 border border-green-500/30 rounded p-3">
-                <p className="text-green-400 text-sm font-bold mb-2">Buy Talents (100 Talents = $1)</p>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setTalentAmount(Math.max(100, talentAmount - 100))}
-                      className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-sm"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      value={talentAmount}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value) || 100;
-                        setTalentAmount(Math.max(100, Math.min(100000, value)));
-                      }}
-                      min="100"
-                      max="100000"
-                      step="100"
-                      className="bg-white/10 text-white border border-white/20 rounded px-2 py-1 w-24 text-center text-sm"
-                    />
-                    <button
-                      onClick={() => setTalentAmount(Math.min(100000, talentAmount + 100))}
-                      className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-sm"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <span className="text-white/60 text-sm">
-                    = ${(talentAmount / 100).toFixed(2)}
-                  </span>
-                  <button
-                    onClick={() => {
-                      const message = `💰 TALENT PURCHASE REQUEST: ${talentAmount} talents ($${talentAmount / 100})`;
-                      setNewMessage(message);
-                      setShowBuyTalents(false);
-                    }}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium"
+              {/* Buy Talents Form */}
+              <AnimatePresence>
+                {showBuyTalents && (
+                  <motion.div
+                    className="bg-green-900/20 border border-green-500/30 rounded p-3"
+                    initial={{ opacity: 0, y: -10, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, y: -10, height: 0 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    Request Purchase
-                  </button>
-                </div>
-              </div>
-            )}
+                    <p className="text-green-400 text-sm font-bold mb-2">Buy Talents (100 Talents = $1)</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <motion.button
+                          onClick={() => setTalentAmount(Math.max(100, talentAmount - 100))}
+                          className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-sm"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          -
+                        </motion.button>
+                        <input
+                          type="number"
+                          value={talentAmount}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value) || 100;
+                            setTalentAmount(Math.max(100, Math.min(100000, value)));
+                          }}
+                          min="100"
+                          max="100000"
+                          step="100"
+                          className="bg-white/10 text-white border border-white/20 rounded px-2 py-1 w-24 text-center text-sm"
+                        />
+                        <motion.button
+                          onClick={() => setTalentAmount(Math.min(100000, talentAmount + 100))}
+                          className="bg-green-700 hover:bg-green-800 text-white px-2 py-1 rounded text-sm"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          +
+                        </motion.button>
+                      </div>
+                      <span className="text-white/60 text-sm">
+                        = ${(talentAmount / 100).toFixed(2)}
+                      </span>
+                      <motion.button
+                        onClick={() => {
+                          const message = `💰 TALENT PURCHASE REQUEST: ${talentAmount} talents ($${talentAmount / 100})`;
+                          setNewMessage(message);
+                          setShowBuyTalents(false);
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-medium"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Request Purchase
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            {/* Report Form */}
-            {showReport && (
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded p-3">
-                <p className="text-blue-400 text-sm font-bold mb-2">Submit Report</p>
-                <div className="space-y-2">
-                  <input
-                    type="url"
-                    value={reportLink}
-                    onChange={(e) => setReportLink(e.target.value)}
-                    placeholder="Enter link URL..."
-                    className="w-full bg-white/10 text-white border border-white/20 rounded px-3 py-2 text-sm focus:outline-none focus:border-white/40"
-                  />
-                  <textarea
-                    value={reportDescription}
-                    onChange={(e) => setReportDescription(e.target.value)}
-                    placeholder="Brief description of what this link is about..."
-                    rows={2}
-                    className="w-full bg-white/10 text-white border border-white/20 rounded px-3 py-2 text-sm focus:outline-none focus:border-white/40 resize-none"
-                  />
-                  <button
-                    onClick={() => {
-                      if (reportLink && reportDescription) {
-                        const message = `📋 REPORT SUBMISSION:\nLink: ${reportLink}\nDescription: ${reportDescription}`;
-                        setNewMessage(message);
-                        setReportLink('');
-                        setReportDescription('');
-                        setShowReport(false);
-                      }
-                    }}
-                    disabled={!reportLink || !reportDescription}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+              {/* Report Form */}
+              <AnimatePresence>
+                {showReport && (
+                  <motion.div
+                    className="bg-blue-900/20 border border-blue-500/30 rounded p-3"
+                    initial={{ opacity: 0, y: -10, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, y: -10, height: 0 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    Submit Report
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                    <p className="text-blue-400 text-sm font-bold mb-2">Submit Report</p>
+                    <div className="space-y-2">
+                      <input
+                        type="url"
+                        value={reportLink}
+                        onChange={(e) => setReportLink(e.target.value)}
+                        placeholder="Enter link URL..."
+                        className="w-full bg-white/10 text-white border border-white/20 rounded px-3 py-2 text-sm focus:outline-none focus:border-white/40"
+                      />
+                      <textarea
+                        value={reportDescription}
+                        onChange={(e) => setReportDescription(e.target.value)}
+                        placeholder="Brief description of what this link is about..."
+                        rows={2}
+                        className="w-full bg-white/10 text-white border border-white/20 rounded px-3 py-2 text-sm focus:outline-none focus:border-white/40 resize-none"
+                      />
+                      <motion.button
+                        onClick={() => {
+                          if (reportLink && reportDescription) {
+                            const message = `📋 REPORT SUBMISSION:\nLink: ${reportLink}\nDescription: ${reportDescription}`;
+                            setNewMessage(message);
+                            setReportLink('');
+                            setReportDescription('');
+                            setShowReport(false);
+                          }
+                        }}
+                        disabled={!reportLink || !reportDescription}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Submit Report
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Image Preview */}
-        {imagePreview && (
-          <div className="mb-3 relative">
-            <img 
-              src={imagePreview} 
-              alt="Preview" 
-              className="max-w-full max-h-32 rounded-lg border border-white/20"
-            />
-            <button
-              onClick={() => {
-                setSelectedImage(null);
-                setImagePreview('');
-              }}
-              className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+        <AnimatePresence>
+          {imagePreview && (
+            <motion.div
+              className="mb-3 relative"
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
-              ×
-            </button>
-          </div>
-        )}
+              <img 
+                src={imagePreview} 
+                alt="Preview" 
+                className="max-w-full max-h-32 rounded-lg border border-white/20"
+              />
+              <motion.button
+                onClick={() => {
+                  setSelectedImage(null);
+                  setImagePreview('');
+                }}
+                className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                ×
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder={
-              mode === 'payment'
-                ? 'Send payment proof or message...'
-                : 'Message Pope AI...'
-            }
-            disabled={loading}
-            className="flex-1 bg-white/5 text-white border border-white/20 rounded px-4 py-2 focus:outline-none focus:border-white/40 disabled:opacity-50"
-          />
-          
-          {/* Image Upload Button */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageSelect}
-            accept="image/*"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={loading}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded font-medium transition-colors disabled:opacity-50 flex items-center gap-1"
-            title={
-              mode === 'payment'
-                ? 'Upload payment proof'
-                : 'Upload image for identity verification'
-            }
+        {/* Input Field and Send Button */}
+        <motion.div
+          className="flex gap-3 items-end"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+        >
+          <motion.div
+            className="flex-1 relative"
+            whileFocus={{ scale: 1.01 }}
+            transition={{ duration: 0.2 }}
           >
-            <ImageIcon size={18} />
-          </button>
-          
-          <button
+            <textarea
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder={mode === 'verification' ? "Describe your verification request..." : "Type your message..."}
+              className="w-full bg-white/10 text-white border border-white/20 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:border-white/40 resize-none min-h-[44px] max-h-32"
+              rows={1}
+              style={{ height: 'auto', minHeight: '44px' }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+              }}
+            />
+            <motion.button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute right-3 top-3 text-white/60 hover:text-white/80 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              📎
+            </motion.button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+          </motion.div>
+
+          <motion.button
             onClick={handleSendMessage}
-            disabled={loading || (!newMessage.trim() && !selectedImage)}
-            className="bg-white text-black px-4 py-2 rounded font-medium hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            disabled={!newMessage.trim() && !selectedImage}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 min-w-[100px] justify-center"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            animate={loading ? { scale: [1, 1.05, 1] } : {}}
+            transition={loading ? { duration: 0.6, repeat: Infinity } : { duration: 0.2 }}
           >
-            <Send size={18} />
-          </button>
-        </div>
+            {loading ? (
+              <>
+                <motion.div
+                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+                Sending...
+              </>
+            ) : (
+              <>
+                <span>Send</span>
+                <span className="text-lg">🚀</span>
+              </>
+            )}
+          </motion.button>
+        </motion.div>
       </div>
         </>
       )}

@@ -29,8 +29,8 @@ COMMENT ON TABLE search_history IS 'Last 10 searches per user for quick re-navig
 COMMENT ON COLUMN search_history.search_type IS 'Type of search performed: human, sound, tag, or gig';
 COMMENT ON COLUMN search_history.result_id IS 'ID of the result that was clicked';
 
-CREATE INDEX idx_search_history_user ON search_history(user_id, created_at DESC);
-CREATE INDEX idx_search_history_type ON search_history(search_type);
+CREATE INDEX IF NOT EXISTS idx_search_history_user ON search_history(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_search_history_type ON search_history(search_type);
 
 -- Auto-delete 11th+ search history entry (keep only last 10)
 CREATE OR REPLACE FUNCTION maintain_search_history()
@@ -50,7 +50,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER auto_clean_search_history
+CREATE OR REPLACE TRIGGER auto_clean_search_history
   AFTER INSERT ON search_history
   FOR EACH ROW
   EXECUTE FUNCTION maintain_search_history();
@@ -74,9 +74,9 @@ COMMENT ON TABLE volatile_tags IS 'Trending hashtags from Elite 6 videos for sea
 COMMENT ON COLUMN volatile_tags.is_trending IS 'If true, appears in search filter suggestions';
 COMMENT ON COLUMN volatile_tags.language_code IS 'Language for regional adaptation';
 
-CREATE INDEX idx_volatile_tags_trending ON volatile_tags(is_trending, usage_count DESC) WHERE is_trending = TRUE;
-CREATE INDEX idx_volatile_tags_language ON volatile_tags(language_code, usage_count DESC);
-CREATE INDEX idx_volatile_tags_usage ON volatile_tags(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_volatile_tags_trending ON volatile_tags(is_trending, usage_count DESC) WHERE is_trending = TRUE;
+CREATE INDEX IF NOT EXISTS idx_volatile_tags_language ON volatile_tags(language_code, usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_volatile_tags_usage ON volatile_tags(usage_count DESC);
 
 -- ============================================================================
 -- 3. SLASHED TAGS (Admin Tag Gardening)
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS slashed_tags (
 COMMENT ON TABLE slashed_tags IS 'Tags removed from search suggestions by moderators';
 COMMENT ON COLUMN slashed_tags.slash_reason IS 'Optional reason for slashing tag';
 
-CREATE INDEX idx_slashed_tags_tag ON slashed_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_slashed_tags_tag ON slashed_tags(tag);
 
 -- ============================================================================
 -- 4. SEARCH RESULT METADATA (13+ Display Logic)
@@ -116,8 +116,8 @@ CREATE TABLE IF NOT EXISTS search_metadata (
 COMMENT ON TABLE search_metadata IS 'Cached search result data with 13+ display logic';
 COMMENT ON COLUMN search_metadata.video_count IS 'Displayed as "13+" if >=13';
 
-CREATE INDEX idx_search_metadata_type ON search_metadata(entity_type);
-CREATE INDEX idx_search_metadata_entity ON search_metadata(entity_id);
+CREATE INDEX IF NOT EXISTS idx_search_metadata_type ON search_metadata(entity_type);
+CREATE INDEX IF NOT EXISTS idx_search_metadata_entity ON search_metadata(entity_id);
 
 -- ============================================================================
 -- 5. HELPER FUNCTIONS
@@ -234,6 +234,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION unslash_tag IS 'Admin action: Restore tag to search suggestions';
+
+-- Drop any existing search_humans functions to avoid conflicts
+DROP FUNCTION IF EXISTS search_humans(text, boolean, integer);
+DROP FUNCTION IF EXISTS search_humans(text);
 
 -- Function to search humans (with COMA filter + full name search)
 CREATE OR REPLACE FUNCTION search_humans(
