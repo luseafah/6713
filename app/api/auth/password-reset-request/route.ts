@@ -10,9 +10,9 @@ export async function POST(req: NextRequest) {
       username = '@' + username.replace(/^@+/, '');
     }
     const { data, error } = await supabase
-      .from('profiles')
+      .from('auth.users')
       .select('email')
-      .ilike('username', username)
+      .eq('raw_user_meta_data->>username', username)
       .single();
     if (error || !data?.email) {
       return NextResponse.json({ error: 'No user found with that username' }, { status: 404 });

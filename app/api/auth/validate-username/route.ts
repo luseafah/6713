@@ -3,14 +3,25 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   const { username } = await req.json();
-  if (!username || /[^a-zA-Z0-9_]/.test(username)) {
-    return NextResponse.json({ error: 'Invalid username' }, { status: 400 });
+  
+  // Ensure username starts with @
+  let normalizedUsername = username;
+  if (normalizedUsername && !normalizedUsername.startsWith('@')) {
+    normalizedUsername = '@' + normalizedUsername.replace(/^@+/, '');
   }
+  
+  // Validate format: @ followed by letters, numbers, underscores only
+  if (!normalizedUsername || !/^@[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
+    return NextResponse.json({ error: 'Username must start with @ and contain only letters, numbers, and underscores' }, { status: 400 });
+  }
+  
+  // Check availability in profiles table (querying auth.users metadata)
   const { data, error } = await supabaseAdmin
-    .from('profiles')
+    .from('auth.users')
     .select('id')
-    .eq('username', username)
+    .eq('raw_user_meta_data->>username', normalizedUsername)
     .single();
+  
   if (data) {
     return NextResponse.json({ available: false });
   }
