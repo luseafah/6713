@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, content } = body;
+    const { user_id, content, message_type = 'text', media_url } = body;
 
     // Get or create thread
     let { data: thread } = await supabaseAdmin
@@ -107,7 +107,9 @@ export async function POST(request: NextRequest) {
         thread_id: thread.id,
         sender_id: user_id,
         sender_username: user?.username || 'User',
-        content,
+        content: content || '',
+        message_type,
+        media_url,
         is_whisper: profile?.coma_status || false,
       })
       .select()

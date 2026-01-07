@@ -120,6 +120,8 @@ export interface DMMessage {
   sender_id: string;
   sender_username: string;
   content: string;
+  message_type?: 'text' | 'image' | 'voice';
+  media_url?: string;
   is_whisper: boolean;
   fourth_wall_broken: boolean;
   created_at: string;
